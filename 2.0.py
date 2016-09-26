@@ -7,29 +7,74 @@ Created by Mingchen on 2015-05-15.
 Copyright (c) 2015 __MyCompanyName__. All rights reserved.
 """
 
-import glob, os, sys, subprocess, re
+import sys, os, csv, re, glob, copy, subprocess, time, multiprocessing
+import traceback, tempfile
+import Bio.Alphabet 
+from Bio.Align import AlignInfo
+from Bio import AlignIO
 from Bio import SeqIO
-from mytools_ymc import *
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from multiprocessing import Pool, Process, Manager
+from bsub import bsub
+from mytools import *
+from misc_prepare_pbs import *
+from misc_get_trimmed_region import *
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
-def process_VDJ_alignment(choosed_infile,IGBLAST_output_files, germline_type):
-	reader_choosed = csv.reader(open(choosed_infile,"rU"),delimiter = "\t")
-	choosed_list = []
-	for line in reader_choosed:
-		choosed_list.append(line.split('*')[0])
-	NoMut_alignment_dict, alignment_dict, subject_result_list, subject_result_family_list, NoMut_result_list = {}, {}, [], [], []
-	for infile in IGBLAST_output_files:
-		print "Processing %s " %infile
-		reader = csv.reader(open(infile,"rU"),delimiter = "\t")
-		for line in reader:
-			if len(line) == 30 and float(line[3]) == float(100.00) and float(line[12]) < 1e-15 and line[0] == germline_type and int(line[10]) == 1 and line[11] == line[15]:
-				query_id = line[1]
-				NoMut_result_list.append(line)
-				NoMut_alignment_dict.setdefault(line[1],[]).append([line[2],line[13]])
-			if len(line) == 30 and line[3] >= 80 and float(line[12]) < 1e-15 and line[0] == germline_type and line[2] in choosed_list:
-				query_id = line[1]
-				alignment_dict.setdefault(line[1],[]).append([line[2],line[13]])
-	subject_result_set = set(subject_result_list)
-	return NoMut_alignment_dict, alignment_dict, NoMut_result_list
+def process_recomb(infile, germline_type):
+	real_reads_list = []
+	print "Processing %s " %infile
+	reader = csv.reader(open(infile,"rU"),delimiter = "\t")
+	total, count = 0, 0
+	for index, line in enumerate(reader):
+		if len(line) != 1:
+			count += 1
+		recomb_result = Recomb(line)
+		if recomb_result.v == "N/A" or recomb_result.j == "N/A":
+			recomb_result.set_cover_vj("No")
+		else:
+			recomb_result.set_cover_vj("Yes")
+		#print recomb_result.v, recomb_result.d, recomb_result.j, recomb_result.productive, recomb_result.cover_vj
+		if recomb_result.productive == "Yes" and recomb_result.cover_vj == "Yes":
+			real_reads_list.append(recomb_result.qid)
+	return real_reads_list, count, index+1
+def process_alignment(infile, germline_type, real_reads_list):
+	NoMut_alignment_dict_all, Mut_alignment_dict_all, NoMut_reads_list_all, Mut_reads_list_all = {}, {}, [], []
+	NoMut_alignment_dict, Mut_alignment_dict, NoMut_reads_list, Mut_reads_list = {}, {}, [], []
+	print "Processing %s " %infile
+	reader = csv.reader(open(infile,"rU"),delimiter = "\t")
+	total, count = 0, 0
+	for line in reader:
+		assign_result = MyAlignment(line) #Use my_tools's MyAlignment CLASS
+		coverage_rate = assign_result.coverage_rate
+		if assign_result.assign_type == germline_type:
+			total += 1
+			if total % 1000 == 0:
+				print "%s Done!"%total
+			if assign_result.identity == float(100.00)  and assign_result.assign_type == germline_type and assign_result.sstart == 1 and assign_result.send == assign_result.slen:
+				#print assign_result.qid,assign_result.sid,assign_result.strand, assign_result.qseq, list(assign_result.qseq)
+				NoMut_reads_list_all.append(assign_result.qid)
+				NoMut_alignment_dict_all.setdefault(assign_result.sid,[]).append(assign_result.qid)
+				if assign_result.qid in real_reads_list:
+					NoMut_reads_list.append(assign_result.qid)
+					NoMut_alignment_dict.setdefault(assign_result.sid,[]).append(assign_result.qid)
+			elif coverage_rate >= 80 and assign_result.assign_type == germline_type:
+				Mut_reads_list_all.append(assign_result.qid)
+				Mut_alignment_dict_all.setdefault(assign_result.sid,[]).append(assign_result.qid)
+				if assign_result.qid in real_reads_list:
+					Mut_reads_list.append(assign_result.qid)
+					Mut_alignment_dict.setdefault(assign_result.sid,[]).append(assign_result.qid)
+			else:
+				count += 1
+				
+		#print assign_result.qid,assign_result.sid,assign_result.strand, assign_result.qseq, list(assign_result.qseq)
+		
+	#print total,len(NoMut_reads_list), len(Mut_reads_list), count
+	return NoMut_alignment_dict, Mut_alignment_dict, NoMut_reads_list, Mut_reads_list, NoMut_alignment_dict_all, Mut_alignment_dict_all, NoMut_reads_list_all, Mut_reads_list_all	
 
 
 def def_score_function(alignment_dict):
@@ -60,13 +105,27 @@ def calculate_score(value_list):
 
 def main():
 	print "Begin!"
-	prj_folder = os.getcwd()
-	choosed_infile = "%s/choosed_gene.txt"%(prj_folder)
-	IGBLAST_output_files = glob.glob("%s/1.4-IgBLAST-output/IgBLAST_result_*"%(prj_folder))
 	
-	os.chdir("%s/2.1-germline-score/"%(prj_folder))
-	for germline_type in ('V','D','J'):
-		NoMut_alignment_dict, alignment_dict, NoMut_result_list = process_VDJ_alignment(choosed_infile,IGBLAST_output_files, germline_type)
+	#Step 1:get No MUT reads and MUT reads, caculate the Ratio.
+	
+	for germline_type in ('V','J'):
+		'''
+		IGBLAST_recombanation_file = "%s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_name)
+		real_reads_list, assign_result_reads_num, total_reads_num = process_recomb(IGBLAST_recombanation_file, germline_type)
+		print len(real_reads_list), assign_result_reads_num, total_reads_num
+		#sys.exit(0)
+		'''
+		IGBLAST_assignment_file = "%s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_name)
+		trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file)
+		#IGBLAST_assignment_files = glob.glob("%s/IgBLAST_result_*_get_assignment_info.txt"%(prj_tree.igblast_data))
+		#NoMut_alignment_dict, Mut_alignment_dict, NoMut_reads_list, Mut_reads_list, NoMut_alignment_dict_all, Mut_alignment_dict_all, NoMut_reads_list_all, Mut_reads_list_all = process_alignment(IGBLAST_assignment_file, germline_type, real_reads_list)
+		'''
+		print len(NoMut_alignment_dict.keys()), len(NoMut_reads_list)
+		print len(Mut_alignment_dict.keys()), len(Mut_reads_list)
+		print len(NoMut_alignment_dict_all.keys()), len(NoMut_reads_list_all)
+		print len(Mut_alignment_dict_all.keys()), len(Mut_reads_list_all)
+		sys.exit(0)
+		'''
 		value_list = def_score_function(alignment_dict)
 		
 		NoMut_line_writer = csv.writer(open("NoMut_line_germeline_%s_score_bitscore.txt"%germline_type,"wt"), delimiter = "\t")
@@ -87,7 +146,12 @@ def main():
 
 if __name__ == '__main__':
 
-	create_folders(os.getcwd())
+	pool_size = multiprocessing.cpu_count()
+	task_pool = Pool(processes = pool_size-1)
+	# create 1st and 2nd subfolders
+	prj_folder = os.getcwd()
+	prj_tree = ProjectFolders(prj_folder)
+	prj_name = fullpath2last_folder(prj_tree.home)
 	
 	main()
 	print "Finished"

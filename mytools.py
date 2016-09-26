@@ -15,6 +15,7 @@ from Bio.Align.Applications import ClustalwCommandline
 from Bio.Blast import NCBIStandalone
 from math import log
 from itertools import imap
+import math
 
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
@@ -57,15 +58,36 @@ class MySeq:
 		self.desc = desc
 
 class Recomb:
-	def __init__(self):
-		self.qid = ""
-		self.v = ""
-		self.j = ""
+	def __init__(self, row):
+		try:
+			self.qid = row[0].strip().split(' ')[0]
+		except:
+			self.qid = row[0].strip()
+		self.v = "N/A"
+		self.d = "N/A"
+		self.j = "N/A"
+		self.strand = ""
+		self.productive = ""
+		if len(row) == 8:
+			self.v = row[1].strip()
+			self.j = row[2].strip()
+			self.strand = row[-1].strip()
+			self.productive = row[-2].strip()
+		if len(row) == 9:
+			self.v = row[1].strip()
+			self.d = row[2].strip()
+			self.j = row[3].strip()
+			self.strand = row[-1].strip()
+			self.productive = row[-2].strip()
+
 		self.cdr_start = -1
 		self.cdr_end = -1
 		self.cdr_nuc = ""
 		self.cdr_aa = ""
-
+	
+	def set_cover_vj(self, s):
+		self.cover_vj = s								# setting strand
+		
 		
 		
 class MyQual:
@@ -78,7 +100,8 @@ class MyQual:
 		
 class MyAlignment:
 	def __init__(self, row):
-		self.qid 			= row[1].strip()			# query id
+		self.assign_type    = row[0].strip()
+		self.qid 			= row[1].strip().replace("reversed|","")			# query id
 		self.sid 			= row[2].upper().strip()	# subject id
 		self.identity 		= float(row[3])				# % identidy
 		self.alignment_len 	= int(row[4])				# alignment length
@@ -92,13 +115,16 @@ class MyAlignment:
 		self.evalue 		= float(row[12])			# e-value
 		self.qlen 			= int(row[13])				# qlen
 		self.slen 			= int(row[14])				# slen
-		self.qseq 			= str(row[15])				# qseq
-		self.sseq 			= str(row[16])				# sseq			
+		self.qseq 			= str(row[15].strip())				# qseq
+		self.sseq 			= str(row[16].strip())				# sseq			
 		self.bitscore	 	= float(row[17])			# bit score
-		self.strand		= ""						# strand
-		
-		self.qlen		= 0
-		self.slen		= 0
+		self.coverage_rate  = float(row[4])/float(row[14])*100 #coverage_rate
+		if "reversed" in row[1]:
+			self.strand		= "-"						# strand
+		else:
+			self.strand		= "+"
+		#self.qlen		= 0
+		#self.slen		= 0
 		
 		self.real_id	= 0.0						# recaluclated identity
 		self.divergence	= 0.0						# recalculated diversity
@@ -180,6 +206,20 @@ def donothing():
 #
 # -- BEGIN -- General methods
 #
+def get_median(data):
+	data.sort()
+	half = len(data) // 2
+	return (data[half] + data[~half]) / 2
+
+def get_median_v2(data):
+	data.sort()
+	half = len(data) // 2
+	return data[half]
+
+def get_median_index(data):
+	data.sort()
+	half = len(data) // 2
+	return half
 def number_statistics(per):
 	unique = []
 	for n in per:
