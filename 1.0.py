@@ -117,11 +117,13 @@ def unique_fasta(prj_folder):
 def get_assignment_and_recombanation_info(infile):
 	fname = retrieve_name_body(infile)
 	count_v,count_d,count_j = 0,0,0 
-	c_v, c_d, c_j, result ='', '', '', []
+	c_v, c_d, c_j, result1, result2 ='', '', '', [], []
 	outfile = open("%s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, fname),"w")
 	writer = csv.writer(outfile,delimiter = "\t")
 	outfile2 = open("%s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, fname),"w")
 	writer2 = csv.writer(outfile2,delimiter = "\t")
+	outfile3 = open("%s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, fname),"w")
+	writer3 = csv.writer(outfile3,delimiter = "\t")
 	reader = csv.reader(open(infile,"rU"),delimiter = "\t")
 	for line in reader:
 		con = str(line)
@@ -156,14 +158,22 @@ def get_assignment_and_recombanation_info(infile):
 		if hit:
 			con = [':'.join(con.split(":")[1:])]
 			con[0].replace(" ", "")
-			result.append(con)
+			con1 = copy.deepcopy(con)
+			con2 = copy.deepcopy(con)
+			result1.append(con1)
+			result2.append(con2)
 		if len(line) >= 7:
 			if line[-1] == '+' or line[-1] == '-':
-				result[-1].extend(line)
-	writer2.writerows(result)
+				result1[-1].extend(line)
+		
+		if len(line) == 8 and "CDR3-IMGT" in line[0]:
+			result2[-1].extend(line)		
+	writer2.writerows(result1)
+	writer3.writerows(result2)
 
 def main():
 	print "Begin!"
+	"""
 	#'''
 	
 	print "Gunzip..."
@@ -283,7 +293,7 @@ def main():
 	print 'All subprocesses done.'
 	'''
 	#'''
-	
+	"""
 	#"""
 	igblast_result_files = glob.glob("%s/IgBLAST_result_*.txt"%(prj_tree.igblast_data))
 	pool = Pool()
@@ -296,13 +306,13 @@ def main():
 	print 'All subprocesses done.'
 	os.system("cat %s/IgBLAST_result_*_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	os.system("cat %s/IgBLAST_result_*_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
-	
+	os.system("cat %s/IgBLAST_result_*_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	#"""
 
 if __name__ == '__main__':
 	print 'Parent process %s'%os.getpid()
 	prj_folder = os.getcwd()
-	prj_tree = create_folders(prj_folder)
+	#prj_tree = create_folders(prj_folder)
 	prj_tree = ProjectFolders(prj_folder)
 	
 	prj_name = fullpath2last_folder(prj_tree.home)
