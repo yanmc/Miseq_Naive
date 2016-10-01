@@ -115,8 +115,8 @@ class MyAlignment:
 		self.evalue 		= float(row[12])			# e-value
 		self.qlen 			= int(row[13])				# qlen
 		self.slen 			= int(row[14])				# slen
-		self.qseq 			= str(row[15].strip())				# qseq
-		self.sseq 			= str(row[16].strip())				# sseq			
+		self.qseq 			= str(row[15].strip())		# qseq
+		self.sseq 			= str(row[16].strip())		# sseq			
 		self.bitscore	 	= float(row[17])			# bit score
 		self.coverage_rate  = float(row[4])/float(row[14])*100 #coverage_rate
 		if "reversed" in row[1]:
@@ -126,14 +126,14 @@ class MyAlignment:
 		#self.qlen		= 0
 		#self.slen		= 0
 		
-		self.real_id	= 0.0						# recaluclated identity
-		self.divergence	= 0.0						# recalculated diversity
+		self.real_identity	= 0.0			# recaluclated identity
+		self.divergence	    = 0.0	        # recalculated diversity
 		
 	def set_strand(self, s):
 		self.strand = s								# setting strand
 		
 	def set_real_identity(self, identity):
-		self.real_id = identity
+		self.real_identity = identity
 		
 	def set_diversity(self, divergence):
 		self.divergence = divergence
