@@ -134,7 +134,7 @@ def prepare_IgBLAST_jobs(prj_name, prj_tree):
 		-organism human -domain_system imgt -query %s -auxiliary_data optional_file/human_gl.aux \
 		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
 		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \
-		sstrand qcovs qcovhsp' -num_alignments_V 1 -num_alignments_D 1 -num_alignments_J 1 -out \
+		sstrand qcovs qcovhsp' -num_alignments_V 3 -num_alignments_D 3 -num_alignments_J 3 -out \
 		%s/IgBLAST_result_%s.txt &"%(infile, prj_tree.igblast_data, f_ind))
 		handle.close()
 

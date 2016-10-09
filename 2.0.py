@@ -39,7 +39,7 @@ def process_recomb(infile, germline_type):
 		else:
 			recomb_result.set_cover_vj("Yes")
 		#print recomb_result.v, recomb_result.d, recomb_result.j, recomb_result.productive, recomb_result.cover_vj
-		if recomb_result.productive == "Yes" and recomb_result.cover_vj == "Yes":
+		if recomb_result.productive == "Yes" and recomb_result.cover_vj == "Yes" and recomb_result.v.split('*')[0] in germline_gene_list:
 			real_reads_list.append(recomb_result.qid)
 	return real_reads_list, count, index+1
 def process_alignment(infile, germline_type, real_reads_list):
@@ -158,9 +158,10 @@ def get_identity_list(Mut_reads, identity_dict):
 			if identity <= i:
 				Mut_reads_num_i[i - 80][1] += 1
 	return Mut_reads_num_i
+
 def main():
 	print "Begin!"
-	task_pool = Pool(processes = pool_size-1)
+	
 	'''
 	IGBLAST_assignment_file = "%s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_name)
 	trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file)
@@ -170,15 +171,12 @@ def main():
 	all_germline_ids = germline_fasta.keys()
 	for germline_type in ('V','J'):
 		
-		outputfile = "%s/%s_%s_gene_usage.txt"%(prj_tree.data, prj_name, germline_type)
-		output_handle = csv.writer(open(outputfile, "w"), delimiter="\t")
 		
-		'''
 		IGBLAST_recombanation_file = "%s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_name)
 		real_reads_list, assign_result_reads_num, total_reads_num = process_recomb(IGBLAST_recombanation_file, germline_type)
 		print len(real_reads_list), assign_result_reads_num, total_reads_num
 		#sys.exit(0)
-		
+		task_pool = Pool(processes = pool_size)
 		IGBLAST_assignment_files = glob.glob("%s/IgBLAST_result_*_get_assignment_info.txt"%(prj_tree.igblast_data))
 		for IGBLAST_assignment_file in IGBLAST_assignment_files:
 			pjobs_ids = task_pool.apply_async(get_alignment_info, args=(IGBLAST_assignment_file, germline_type, real_reads_list,))
@@ -188,7 +186,7 @@ def main():
 		task_pool.join()
 		#check_jobs_done(prj_name, prj_tree, "get_assignment_info", pjobs_ids)
 		print 'All subprocesses done.'
-		'''
+		
 		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict= {}, {}, {}
 		get_assignment_info_dump_files = glob.glob('%s/%s_get_assignment_info_dump_*'%(prj_tree.tmp, prj_name))
 		for infile in get_assignment_info_dump_files:
@@ -200,6 +198,11 @@ def main():
 			for read_id in value:
 				identity_dict[read_id] = key
 		germline_ids = get_germ_ids(NoMut_alignment_dict.keys(), Mut_alignment_dict.keys())
+		
+		outputfile1 = "%s/%s_%s_gene_usage.txt"%(prj_tree.data, prj_name, germline_type)
+		output_handle = csv.writer(open(outputfile1, "w"), delimiter="\t")
+		outputfile2 = "%s/%s_%s_gene_usage_sorted.txt"%(prj_tree.data, prj_name, germline_type)
+		output_handle_sorted = csv.writer(open(outputfile2, "w"), delimiter="\t")
 		
 		for germ_id in germline_ids:
 			try:
@@ -215,17 +218,18 @@ def main():
 			reads_num = NoMut_reads_num + Mut_reads_num
 			Mut_reads_num_i = get_identity_list(Mut_reads, identity_dict)
 			Mut_reads_num_i = continuous_subtraction_list(Mut_reads_num_i)
-			output_handle.writerow([germ_id, NoMut_reads_num] + Mut_reads_num_i + [reads_num])
+			result_line = [germ_id, NoMut_reads_num] + Mut_reads_num_i + [reads_num]
+			output_handle.writerow(result_line)
 			
-			#if germ_id.split('*')[0] in germline_gene_list:
-			#	print germ_id, identity
-		#print len(real_reads_list), assign_result_reads_num, total_reads_num
+			if germ_id.split('*')[0] in germline_gene_list:
+				output_handle_sorted.writerow([germ_id, NoMut_reads_num] + Mut_reads_num_i + [reads_num])
 		
-		maturation_outputfile = "%s/%s_%s_maturation_rate.txt"%(prj_tree.data, prj_name, germline_type)
-		maturation_output_handle = csv.writer(open(maturation_outputfile, "w"), delimiter="\t")
+		maturation_outputfile1 = "%s/%s_%s_maturation_rate.txt"%(prj_tree.data, prj_name, germline_type)
+		maturation_output_handle = csv.writer(open(maturation_outputfile1, "w"), delimiter="\t")
+		maturation_outputfile2 = "%s/%s_%s_maturation_rate.txt"%(prj_tree.data, prj_name, germline_type)
+		maturation_output_handle_sorted = csv.writer(open(maturation_outputfile2, "w"), delimiter="\t")
 		for (key, value) in sorted(maturation_rate_dict.items()):
 			maturation_output_handle.writerow([key, round(100-float(key), 2), len(value)])
-
 if __name__ == '__main__':
 
 	pool_size = multiprocessing.cpu_count()
