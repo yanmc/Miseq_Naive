@@ -295,6 +295,9 @@ def main():
 	#'''
 	"""
 	#"""
+	os.system("rm %s/IgBLAST_result_*_get_assignment_info.txt"%prj_tree.igblast_data)
+	os.system("rm %s/IgBLAST_result_*_get_recombanation_info.txt"%prj_tree.igblast_data)
+	os.system("rm %s/IgBLAST_result_*_get_CDR3_info.txt"%prj_tree.igblast_data)
 	igblast_result_files = glob.glob("%s/IgBLAST_result_*.txt"%(prj_tree.igblast_data))
 	pool = Pool()
 	for igblast_result_file in igblast_result_files:

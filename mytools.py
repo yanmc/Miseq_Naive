@@ -100,7 +100,7 @@ class MyQual:
 		
 class MyAlignment:
 	def __init__(self, row):
-		self.assign_type    = row[0].strip()
+		self.assign_type    = row[0].upper().strip()
 		self.qid 			= row[1].strip().replace("reversed|","")			# query id
 		self.sid 			= row[2].upper().strip()	# subject id
 		self.identity 		= float(row[3])				# % identidy
