@@ -676,6 +676,24 @@ def load_quals(f):
 #
 # -- BEGIN -- FASTA file and sequence methods
 #
+def unique_fasta(infile):
+	reader = SeqIO.parse(infile, "fasta")
+	fname, suffix = os.path.splitext(infile)
+	writer = open("%s_unique.fasta"%fname,"w")
+	record_writer = csv.writer(open("%s_unique.record"%fname,"w"), delimiter = "\t")
+	unique_id_list, handle_dict_unique, dict_unique = [], {}, {}
+	for index, record in enumerate(reader):
+		handle_dict_unique.setdefault(record.seq, []).append(record.id)
+	for seq, ID in handle_dict_unique.items():
+		record_writer.writerow(ID)
+		#dict_unique["%s_%d"%(ID[0], len(ID))] = seq
+		dict_unique["%s"%(ID[0])] = seq
+	for ID, seq in dict_unique.items():
+		unique_id_list.append(ID)
+		seqrecord = SeqRecord(seq, id =ID)
+		SeqIO.write(seqrecord, writer, "fasta")
+	print "The number of unique reads in fasta file is %d"%len(dict_unique)
+	return unique_id_list, dict_unique
 
 def SeqRecord_gernerator(seq_id, seq, des):
 	result_seq = SeqRecord(Seq(seq), id = seq_id, description = des)
