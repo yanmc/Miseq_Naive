@@ -159,17 +159,19 @@ def continuous_subtraction_list(Mut_reads_num_i):
 	return [x[1] for x in Mut_reads_num_i]
 
 def get_identity_list(Mut_reads, identity_dict):
-	Mut_reads_num_i = [[x, 0] for x in range(80, 101)]
+	Mut_reads_num_i = [[x, 0] for x in range(75, 101)]
 	for read_id in Mut_reads:
 		identity = identity_dict[read_id]
-		for i in range(80,101):	
-			if identity <= i:
-				Mut_reads_num_i[i - 80][1] += 1
+		for i in range(75,101):	
+			if identity < i:
+				Mut_reads_num_i[i - 75][1] += 1
 	return Mut_reads_num_i
 
 def get_max_y_tick(max_value):
-	return int(math.ceil(float(max_value)/10000))
-
+	#return int(math.ceil(float(max_value)/10000))
+	max_part = int(('').jion([x for x in str(max_value) if x != "0"]))
+	while max_part % 10 != 0:
+		max_part += 1
 def clear_VJcoverage80_reads(alignment_dict, real_reads):
 	for key, value in alignment_dict.items():
 		new_value = set(real_reads) & set(value)
@@ -178,41 +180,182 @@ def clear_VJcoverage80_reads(alignment_dict, real_reads):
 		else:
 			alignment_dict[key] = new_value
 	return alignment_dict
+
+def get_dump_data(germline_type):
+	NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict= {}, {}, {}
+	get_assignment_info_dump_files = glob.glob('%s/%s_get_assignment_info_dump_%s_*'%(prj_tree.tmp, prj_name, germline_type))
+	for infile in get_assignment_info_dump_files:
+		NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part = process_dump(infile)
+		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = combine_dict_and_list(NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict, NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part)
+	return NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict
+
+def get_identity_dict(maturation_rate_dict):
+	identity_dict = {}
+	for (key, value) in maturation_rate_dict.items():
+		for read_id in value:
+			identity_dict[read_id] = key
+	return identity_dict
+
+def get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_alignment_dict, pic_type, germline_ids):
+	outputfile1 = "%s/%s_%s_gene_usage%s.txt"%(prj_tree.data, prj_name, germline_type, pic_type)
+	output_handle = csv.writer(open(outputfile1, "w"), delimiter="\t")
+	geneusage_data, columns, max_value = [], [], 0
+	for germ_id in sorted(germline_ids):
+		try:
+			NoMut_reads_num = len(NoMut_alignment_dict[germ_id])
+		except KeyError:
+			NoMut_reads_num = 0
+		try:
+			Mut_reads_num = len(Mut_alignment_dict[germ_id])
+			Mut_reads = Mut_alignment_dict[germ_id]
+		except KeyError:
+			Mut_reads_num = 0
+			Mut_reads = []
+		reads_num = NoMut_reads_num + Mut_reads_num
+		Mut_reads_num_i = get_identity_list(Mut_reads, identity_dict)
+		Mut_reads_num_i = continuous_subtraction_list(Mut_reads_num_i)
+		Mut_reads_num_i = Mut_reads_num_i[1:] #delete < ide 75% reads
+		result_line = [germ_id] + Mut_reads_num_i + [NoMut_reads_num]
+		output_handle.writerow(result_line)
+		geneusage_data.append(result_line[1:])
+		if max_value < sum(result_line[1:]):
+			max_value = sum(result_line[1:])
+		columns.append(germ_id)
+	return geneusage_data, columns
+def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type):
+	SBG = StackedBarGrapher()
+	d = np.array(geneusage_data)
+	total_number = np.sum(d)
+	line_numbers = np.sum(d, axis=1)
+	line_number_percent_list = []
+	for line_number in line_numbers:
+		#line_number_percent = format((float(line_number)/float(total_number)), '.2%')
+		line_number_percent = float(line_number)/float(total_number) * 100
+		line_number_percent_list.append(line_number_percent)
+	print len(line_number_percent_list), len(columns)
+	zip_gene_number = zip(columns, line_number_percent_list)
+	print zip_gene_number
+	gene_number_dict = {}
+	for item in zip_gene_number:
+		gene_number_dict.setdefault(item[0].split('*')[0], []).append(item[1])
+	max_len_value = 0
+	for key, value in  gene_number_dict.items():
+		if max_len_value < len(value):
+			max_len_value = len(value)
+	#	gene_number_dict[key] =sum(value)
+	print gene_number_dict
+	gene_names = get_all_gene_name(germline_gene_list)
+	data = np.zeros((len(gene_names),max_len_value))
+	print 
+	for index, gene in enumerate(gene_names):
+		try:
+			gene_number = gene_number_dict[gene]
+			print gene_number
+			for n_index, number in enumerate(sorted(gene_number, reverse=True)):
+				
+				data[index][n_index] = number
+		except KeyError:
+			pass		
+		
+	print data
+	#sys.exit(0)
+	#d_labels = columns
+	d_labels = gene_names
+	d_colors = ['#2166ac', '#fee090', '#fdbb84', '#fc8d59', '#e34a33', '#b30000', '#777777']
+	rows = ['%d%%' % x for x in range(75, 101)]
+	#rows.insert(0, "<75%")
+	colors = plt.cm.BuPu(np.linspace(0, 0.5, max_len_value))
+	d_colors = colors
+	fig = plt.figure(1)
+	'''
+	max_y_tick = get_max_y_tick(max_value)
+	y_ticks, tick_log = [[0],[0]], 0
+	while tick_log <= max_y_tick:
+		y_ticks[0].append(tick_log*10000)
+		y_ticks[1].append(tick_log*10)
+		tick_log += 1
+	'''
+	ax = fig.add_subplot(111)
+	y_ticks = 5
+	SBG.stackedBarPlot(ax,
+	                   data,
+	                   d_colors,
+	                   xLabels=d_labels,
+	                   yTicks= y_ticks,
+	                   scale=False,
+					   ylabel = 'Percent of reads (*1000)',
+					   gap =.2
+	                  )
+	plt.title("%s_%s_gene_usage"%(prj_name, germline_type))
+
+	fig.subplots_adjust(bottom=0.4)
+	plt.tight_layout()
+	
+	plt.savefig('%s/%s_%s_gene_usage%s.png'%(prj_tree.figure, prj_name, germline_type, pic_type))
+	
+
+def plot_maturation_rate(maturation_rate_dict, pic_type):
+	maturation_outputfile1 = "%s/%s_%s_maturation_rate.txt"%(prj_tree.data, prj_name, germline_type)
+	maturation_output_handle = csv.writer(open(maturation_outputfile1, "w"), delimiter="\t")
+	divergence, number_reads = [], []
+	for (key, value) in sorted(maturation_rate_dict.items()):
+		maturation_output_handle.writerow([key, round(100-float(key), 2), len(value)])
+		divergence.append(round(100-float(key), 2))
+		number_reads.append(len(value))
+	maturation_rate_fig = plt.figure(2)
+	plt.plot(divergence, number_reads, 'bo', divergence, number_reads, 'k')
+	max_y_tick = get_max_y_tick(max(number_reads))
+	
+	if max_y_tick % 2 != 0:
+		max_y_tick += 1
+	y_ticks, tick_log = [[0],[0]], 0
+	while tick_log <= max_y_tick:
+		tick_log += 4
+		y_ticks[0].append(tick_log*10000)
+		y_ticks[1].append(tick_log*10)
+		
+	plt.yticks(y_ticks[0],y_ticks[1])
+	plt.xlabel('Maturation rate (%)')
+	plt.ylabel('Number of reads (*1000)')
+	plt.title("%s_%s_maturation_rate"%(prj_name, germline_type))
+	plt.savefig('%s/%s_%s_maturation_rate%s.png'%(prj_tree.figure, prj_name, germline_type, pic_type))
+
+def get_germline_gene(germline_type, chain_type):
+	if germline_type == 'V' and chain_type == "H":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGHV']
+	elif germline_type == 'J' and chain_type == "H":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGHJ']
+	
+	elif germline_type == 'V' and chain_type == "K":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGKV']
+	elif germline_type == 'J' and chain_type == "K":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGKJ']
+	
+	elif germline_type == 'V' and chain_type == "L":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGLV']
+	elif germline_type == 'J' and chain_type == "L":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGLJ']
+	return germline_gene_list
+
+def get_all_gene_name(germline_gene_list):
+	return sorted(set([x.split('*')[0] for x in germline_gene_list]))
 def main():
 	print "Begin!"
+	"""
 	#Step0 : get all reads Variable region, V gene region and CDR3 region
-
 	origin_record_dict = SeqIO.index("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name),  "fasta")
-
 	IGBLAST_assignment_file = "%s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_name)
-	IGBLAST_CDR3_file = "%s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_name)
-	
+	IGBLAST_CDR3_file = "%s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_name)	
 	#get V-region, Variable-region, CDR3-region
 	trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CDR3_file, origin_record_dict)
-	
-
 	#Step0 over
-	
-	
+
 	#Step 1:get No MUT reads and MUT reads, caculate the Ratio.
 	germline_fasta = load_fasta_dict("%s/IgBLAST_database/20150429-human-gl-vdj.fasta"%prj_tree.igblast_database)
 	all_germline_ids = germline_fasta.keys()
 	coverage80_reads_list_V, coverage80_reads_list_J = [], []
 	for germline_type in ('V','J'):	
-		if germline_type == 'V' and chain_type == "H":
-			germline_gene_list = HUMAN_GERMLINE['HUMANIGHV']
-		if germline_type == 'J' and chain_type == "H":
-			germline_gene_list = HUMAN_GERMLINE['HUMANIGHJ']
-		
-		if germline_type == 'V' and chain_type == "K":
-			germline_gene_list = HUMAN_GERMLINE['HUMANIGKV']
-		if germline_type == 'J' and chain_type == "K":
-			germline_gene_list = HUMAN_GERMLINE['HUMANIGKJ']
-		
-		if germline_type == 'V' and chain_type == "L":
-			germline_gene_list = HUMAN_GERMLINE['HUMANIGLV']
-		if germline_type == 'J' and chain_type == "L":
-			germline_gene_list = HUMAN_GERMLINE['HUMANIGLJ']
+		germline_gene_list = get_germline_gene(germline_type, chain_type)
 		'''
 		#os.system("rm %s/%s_get_assignment_info_dump*"%(prj_tree.tmp, prj_name))
 		IGBLAST_recombanation_file = "%s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_name)
@@ -234,7 +377,6 @@ def main():
 		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict= {}, {}, {}
 		get_assignment_info_dump_files = glob.glob('%s/%s_get_assignment_info_dump_%s_*'%(prj_tree.tmp, prj_name, germline_type))
 		for infile in get_assignment_info_dump_files:
-			print infile
 			NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part = process_dump(infile)
 			NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = combine_dict_and_list(NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict, NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part)
 		
@@ -249,6 +391,7 @@ def main():
 					coverage80_reads_list_J.append(read_id)
 				else:
 					pass
+	
 	#Step2 : get real reads Variable region, V gene region and CDR3 region
 
 	Variable_region_record_dict = SeqIO.index("%s/%s_Variable_region.fasta"%(prj_tree.reads, prj_name), "fasta")
@@ -269,101 +412,15 @@ def main():
 
 	#Step2 Over	
 	for germline_type in ('V','J'):	
-		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict= {}, {}, {}
-		get_assignment_info_dump_files = glob.glob('%s/%s_get_assignment_info_dump_%s_*'%(prj_tree.tmp, prj_name, germline_type))
-		for infile in get_assignment_info_dump_files:
-			NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part = process_dump(infile)
-			NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = combine_dict_and_list(NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict, NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part)
-		print [len(y) for x,y in  sorted(NoMut_alignment_dict.items())]
-		NoMut_alignment_dict, Mut_alignment_dict = clear_VJcoverage80_reads(NoMut_alignment_dict, real_reads), clear_VJcoverage80_reads(Mut_alignment_dict, real_reads)
-		print [len(y) for x,y in  sorted(NoMut_alignment_dict.items())]
-		identity_dict = {}
-		for (key, value) in maturation_rate_dict.items():
-			for read_id in value:
-				identity_dict[read_id] = key
+		pic_type = ""
+		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = get_dump_data(germline_type)
+		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = clear_VJcoverage80_reads(NoMut_alignment_dict, real_reads), clear_VJcoverage80_reads(Mut_alignment_dict, real_reads),  clear_VJcoverage80_reads(maturation_rate_dict, real_reads)		
+		identity_dict = get_identity_dict(maturation_rate_dict)
 		germline_ids = get_germ_ids(NoMut_alignment_dict.keys(), Mut_alignment_dict.keys())
-		outputfile1 = "%s/%s_%s_gene_usage.txt"%(prj_tree.data, prj_name, germline_type)
-		output_handle = csv.writer(open(outputfile1, "w"), delimiter="\t")
-		geneusage_data, columns, max_value = [], [], 0
-		for germ_id in sorted(germline_ids):
-			try:
-				NoMut_reads_num = len(NoMut_alignment_dict[germ_id])
-			except KeyError:
-				NoMut_reads_num = 0
-			try:
-				Mut_reads_num = len(Mut_alignment_dict[germ_id])
-				Mut_reads = Mut_alignment_dict[germ_id]
-			except KeyError:
-				Mut_reads_num = 0
-				Mut_reads = []
-			reads_num = NoMut_reads_num + Mut_reads_num
-			Mut_reads_num_i = get_identity_list(Mut_reads, identity_dict)
-			Mut_reads_num_i = continuous_subtraction_list(Mut_reads_num_i)
-			result_line = [germ_id] + Mut_reads_num_i + [NoMut_reads_num]
-			output_handle.writerow(result_line)
-			geneusage_data.append(result_line[1:])
-			if max_value < sum(result_line[1:]):
-				max_value = sum(result_line[1:])
-			columns.append(germ_id)
-		
+		geneusage_data, columns = get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_alignment_dict, pic_type, germline_ids)
 		#Step2: Plot gene usage and maturation rate
-
-		SBG = StackedBarGrapher()
-		d = np.array(geneusage_data)
-		d_labels = columns
-		d_colors = ['#2166ac', '#fee090', '#fdbb84', '#fc8d59', '#e34a33', '#b30000', '#777777']
-		rows = ['%d%%' % x for x in range(80, 101)]
-		rows.insert(0, "<80%")
-		colors = plt.cm.BuPu(np.linspace(0, 0.5, len(rows)))
-		d_colors = colors
-		fig = plt.figure(1)
-		max_y_tick = get_max_y_tick(max_value)
-		y_ticks, tick_log = [[0],[0]], 1
-		while tick_log <= max_y_tick:
-			y_ticks[0].append(tick_log*10000)
-			y_ticks[1].append(tick_log*10)
-			tick_log += 1
-		ax = fig.add_subplot(111)
-		SBG.stackedBarPlot(ax,
-		                   d,
-		                   d_colors,
-		                   xLabels=d_labels,
-		                   yTicks= y_ticks,
-		                   scale=False,
-						   ylabel = 'Number of reads (*1000)',
-						   gap =.2
-		                  )
-		plt.title("%s_%s_gene_usage"%(prj_name, germline_type))
-
-		fig.subplots_adjust(bottom=0.4)
-		plt.tight_layout()
-		
-		plt.savefig('%s/%s_%s_gene_usage.png'%(prj_tree.figure, prj_name, germline_type))
-		maturation_outputfile1 = "%s/%s_%s_maturation_rate.txt"%(prj_tree.data, prj_name, germline_type)
-		maturation_output_handle = csv.writer(open(maturation_outputfile1, "w"), delimiter="\t")
-		divergence, number_reads = [], []
-		for (key, value) in sorted(maturation_rate_dict.items()):
-			maturation_output_handle.writerow([key, round(100-float(key), 2), len(value)])
-			divergence.append(round(100-float(key), 2))
-			number_reads.append(len(value))
-		maturation_rate_fig = plt.figure(2)
-		plt.plot(divergence, number_reads, 'bo', divergence, number_reads, 'k')
-		max_y_tick = get_max_y_tick(max(number_reads))
-		
-		#if max_y_tick % 2 != 0:
-		#	max_y_tick += 1
-		y_ticks, tick_log = [[0],[0]], 0
-		while tick_log <= max_y_tick:
-			tick_log += 4
-			y_ticks[0].append(tick_log*10000)
-			y_ticks[1].append(tick_log*10)
-			
-		plt.yticks(y_ticks[0],y_ticks[1])
-		plt.xlabel('Maturation rate (%)')
-		plt.ylabel('Number of reads (*1000)')
-		plt.title("%s_%s_maturation_rate"%(prj_name, germline_type))
-		plt.savefig('%s/%s_%s_maturation_rate.png'%(prj_tree.figure, prj_name, germline_type))
-		
+		plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type)
+		plot_maturation_rate(maturation_rate_dict, pic_type)
 		
 	#Step 3 Unique fasta file
 	Variable_region_fasta_file = "%s/%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name)
@@ -372,104 +429,24 @@ def main():
 	V_region_unique_id_list, V_region_dict_unique = unique_fasta(V_region_fasta_file)
 	CDR3_region_fasta_file = "%s/%s_real_reads_CDR3.fasta"%(prj_tree.reads, prj_name)
 	CDR3_region_unique_id_list, CDR3_region_dict_unique = unique_fasta(CDR3_region_fasta_file)
+	"""
 	
-	print len(Variable_region_unique_id_list)
-	
-	for germline_type in ('V','J'):	
-		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict= {}, {}, {}
-		get_assignment_info_dump_files = glob.glob('%s/%s_get_assignment_info_dump_%s_*'%(prj_tree.tmp, prj_name, germline_type))
-		for infile in get_assignment_info_dump_files:
-			NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part = process_dump(infile)
-			NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = combine_dict_and_list(NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict, NoMut_alignment_dict_part, Mut_alignment_dict_part, maturation_rate_dict_part)
-		print [len(y) for x,y in  sorted(NoMut_alignment_dict.items())]
-		NoMut_alignment_dict, Mut_alignment_dict = clear_VJcoverage80_reads(NoMut_alignment_dict, Variable_region_unique_id_list), clear_VJcoverage80_reads(Mut_alignment_dict, Variable_region_unique_id_list)
-		print [len(y) for x,y in  sorted(NoMut_alignment_dict.items())]
-		identity_dict = {}
-		for (key, value) in maturation_rate_dict.items():
-			for read_id in value:
-				identity_dict[read_id] = key
+	Variable_region_fasta_file = SeqIO.index("%s/%s_real_reads_Variable_region_unique.fasta"%(prj_tree.reads, prj_name), "fasta")
+	Variable_region_unique_id_list = list(Variable_region_fasta_file.keys())
+	#print Variable_region_unique_id_list
+	for germline_type in ('V','J'):
+		germline_gene_list = get_germline_gene(germline_type, chain_type)
+		pic_type = "_unique"
+		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = get_dump_data(germline_type)
+		print len(NoMut_alignment_dict)
+		NoMut_alignment_dict, Mut_alignment_dict, maturation_rate_dict = clear_VJcoverage80_reads(NoMut_alignment_dict, Variable_region_unique_id_list), clear_VJcoverage80_reads(Mut_alignment_dict, Variable_region_unique_id_list), clear_VJcoverage80_reads(maturation_rate_dict, Variable_region_unique_id_list)		
+		identity_dict = get_identity_dict(maturation_rate_dict)
 		germline_ids = get_germ_ids(NoMut_alignment_dict.keys(), Mut_alignment_dict.keys())
-		outputfile1 = "%s/%s_%s_gene_usage_unique.txt"%(prj_tree.data, prj_name, germline_type)
-		output_handle = csv.writer(open(outputfile1, "w"), delimiter="\t")
-		geneusage_data, columns, max_value = [], [], 0
-		for germ_id in sorted(germline_ids):
-			try:
-				NoMut_reads_num = len(NoMut_alignment_dict[germ_id])
-			except KeyError:
-				NoMut_reads_num = 0
-			try:
-				Mut_reads_num = len(Mut_alignment_dict[germ_id])
-				Mut_reads = Mut_alignment_dict[germ_id]
-			except KeyError:
-				Mut_reads_num = 0
-				Mut_reads = []
-			reads_num = NoMut_reads_num + Mut_reads_num
-			Mut_reads_num_i = get_identity_list(Mut_reads, identity_dict)
-			Mut_reads_num_i = continuous_subtraction_list(Mut_reads_num_i)
-			result_line = [germ_id] + Mut_reads_num_i + [NoMut_reads_num]
-			output_handle.writerow(result_line)
-			geneusage_data.append(result_line[1:])
-			if max_value < sum(result_line[1:]):
-				max_value = sum(result_line[1:])
-			columns.append(germ_id)
-		
+		geneusage_data, columns = get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_alignment_dict, pic_type, germline_ids)
 		#Step2: Plot gene usage and maturation rate
-
-		SBG = StackedBarGrapher()
-		d = np.array(geneusage_data)
-		d_labels = columns
-		d_colors = ['#2166ac', '#fee090', '#fdbb84', '#fc8d59', '#e34a33', '#b30000', '#777777']
-		rows = ['%d%%' % x for x in range(80, 101)]
-		rows.insert(0, "<80%")
-		colors = plt.cm.BuPu(np.linspace(0, 0.5, len(rows)))
-		d_colors = colors
-		fig = plt.figure(1)
-		max_y_tick = get_max_y_tick(max_value)
-		y_ticks, tick_log = [[0],[0]], 1
-		while tick_log <= max_y_tick:
-			y_ticks[0].append(tick_log*10000)
-			y_ticks[1].append(tick_log*10)
-			tick_log += 1
-		ax = fig.add_subplot(111)
-		SBG.stackedBarPlot(ax,
-		                   d,
-		                   d_colors,
-		                   xLabels=d_labels,
-		                   yTicks= y_ticks,
-		                   scale=False,
-						   ylabel = 'Number of reads (*1000)',
-						   gap =.2
-		                  )
-		plt.title("%s_%s_gene_usage"%(prj_name, germline_type))
-
-		fig.subplots_adjust(bottom=0.4)
-		plt.tight_layout()
+		plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type)
+		plot_maturation_rate(maturation_rate_dict, pic_type)
 		
-		plt.savefig('%s/%s_%s_gene_usage_unique.png'%(prj_tree.figure, prj_name, germline_type))
-		maturation_outputfile1 = "%s/%s_%s_maturation_rate_unique.txt"%(prj_tree.data, prj_name, germline_type)
-		maturation_output_handle = csv.writer(open(maturation_outputfile1, "w"), delimiter="\t")
-		divergence, number_reads = [], []
-		for (key, value) in sorted(maturation_rate_dict.items()):
-			maturation_output_handle.writerow([key, round(100-float(key), 2), len(value)])
-			divergence.append(round(100-float(key), 2))
-			number_reads.append(len(value))
-		maturation_rate_fig = plt.figure(2)
-		plt.plot(divergence, number_reads, 'bo', divergence, number_reads, 'k')
-		max_y_tick = get_max_y_tick(max(number_reads))
-		
-		#if max_y_tick % 2 != 0:
-		#	max_y_tick += 1
-		y_ticks, tick_log = [[0],[0]], 0
-		while tick_log <= max_y_tick:
-			tick_log += 4
-			y_ticks[0].append(tick_log*10000)
-			y_ticks[1].append(tick_log*10)
-			
-		plt.yticks(y_ticks[0],y_ticks[1])
-		plt.xlabel('Maturation rate (%)')
-		plt.ylabel('Number of reads (*1000)')
-		plt.title("%s_%s_maturation_rate"%(prj_name, germline_type))
-		plt.savefig('%s/%s_%s_maturation_rate_unique.png'%(prj_tree.figure, prj_name, germline_type))
 if __name__ == '__main__':
 
 	pool_size = multiprocessing.cpu_count()
