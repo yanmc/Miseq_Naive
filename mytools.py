@@ -69,14 +69,14 @@ class Recomb:
 		self.strand = ""
 		self.productive = ""
 		if len(row) == 8:
-			self.v = row[1].strip()
-			self.j = row[2].strip()
+			self.v = row[1].strip().split(',')[0]
+			self.j = row[2].strip().split(',')[0]
 			self.strand = row[-1].strip()
 			self.productive = row[-2].strip()
 		if len(row) == 9:
-			self.v = row[1].strip()
-			self.d = row[2].strip()
-			self.j = row[3].strip()
+			self.v = row[1].strip().split(',')[0]
+			self.d = row[2].strip().split(',')[0]
+			self.j = row[3].strip().split(',')[0]
 			self.strand = row[-1].strip()
 			self.productive = row[-2].strip()
 
@@ -677,12 +677,11 @@ def load_quals(f):
 # -- BEGIN -- FASTA file and sequence methods
 #
 def unique_fasta(infile):
-	reader = SeqIO.parse(infile, "fasta")
 	fname, suffix = os.path.splitext(infile)
 	writer = open("%s_unique.fasta"%fname,"w")
 	record_writer = csv.writer(open("%s_unique.record"%fname,"w"), delimiter = "\t")
 	unique_id_list, handle_dict_unique, dict_unique = [], {}, {}
-	for index, record in enumerate(reader):
+	for index, record in enumerate(SeqIO.parse(open(infile, "rU"), "fasta")):
 		handle_dict_unique.setdefault(record.seq, []).append(record.id)
 	for seq, ID in handle_dict_unique.items():
 		record_writer.writerow(ID)
@@ -690,9 +689,10 @@ def unique_fasta(infile):
 		dict_unique["%s"%(ID[0])] = seq
 	for ID, seq in dict_unique.items():
 		unique_id_list.append(ID)
-		seqrecord = SeqRecord(seq, id =ID)
+		seqrecord = SeqRecord(seq, id =ID, description = "Unique")
 		SeqIO.write(seqrecord, writer, "fasta")
 	print "The number of unique reads in fasta file is %d"%len(dict_unique)
+	writer.close()
 	return unique_id_list, dict_unique
 
 def SeqRecord_gernerator(seq_id, seq, des):

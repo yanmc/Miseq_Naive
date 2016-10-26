@@ -16,8 +16,8 @@ import glob, csv, Bio, re,os,sys
 from Bio import SeqIO
 from mytools import *
 from Bio import SeqIO
-def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CDR3_file, origin_record_dict):
-	CDR3_outfile = open("%s/%s_CDR3.fasta"%(prj_tree.reads, prj_name),"w")
+def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CDR3_file, origin_record_dict, chain_type):
+	CDR3_outfile = open("%s/%s_%s_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	CDR3_reader = csv.reader(open(IGBLAST_CDR3_file,"rU"), delimiter = "\t")
 	CDR3_start_dict = {}
 	for line in CDR3_reader:
@@ -28,8 +28,8 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 			continue
 		CDR3_start_dict[query_id] = CDR3_start
 	
-	outfile = open("%s/%s_Variable_region.fasta"%(prj_tree.reads, prj_name),"w")
-	outfile2 = open("%s/%s_V_gene_region.fasta"%(prj_tree.reads, prj_name),"w")
+	outfile = open("%s/%s_%s_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
+	outfile2 = open("%s/%s_%s_V_gene_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	reader = csv.reader(open(IGBLAST_assignment_file,"rU"), delimiter = "\t")
 	result = ['Query_ID','query_seq','query_length','Variable_region', 'V_gene_region']
 	assign_position_dict = {}

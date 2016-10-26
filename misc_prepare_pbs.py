@@ -58,7 +58,7 @@ def check_jobs_done(prj_name, prj_tree, app, igblast_job_ids):
 					#os.system("mv %s %s"%(errput, prj_tree.logs))
 					#os.system("mv %s %s"%(output, prj_tree.logs))
 					#os.system("rm %s"%(errput))
-					#os.system("rm %s"%(output))
+					os.system("rm %s"%(output))
 			output_log.close()
 
 		#igblast_job_ids.pop(index)
@@ -129,8 +129,8 @@ def prepare_IgBLAST_jobs(prj_name, prj_tree):
 		handle.write("#BSUB -o %s/output_%%%s\n"%(prj_tree.jobs, "J"))
 		handle.write("#BSUB -e %s/errput_%%%s\n"%(prj_tree.jobs, "J"))
 		handle.write("#BSUB -q cpu\n")
-		handle.write("igblastn -germline_db_V ./Igblast_database/IgBLAST_database/20150429-human-gl-v -germline_db_J \
-		./Igblast_database/IgBLAST_database/20150429-human-gl-j -germline_db_D ./Igblast_database/IgBLAST_database/20150429-human-gl-d \
+		handle.write("igblastn -germline_db_V ./Igblast_database/20150429-human-gl-v -germline_db_J \
+		./Igblast_database/20150429-human-gl-j -germline_db_D ./Igblast_database/20150429-human-gl-d \
 		-organism human -domain_system imgt -query %s -auxiliary_data optional_file/human_gl.aux \
 		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
 		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \

@@ -173,7 +173,7 @@ def get_assignment_and_recombanation_info(infile):
 
 def main():
 	print "Begin!"
-	"""
+
 	#'''
 	
 	print "Gunzip..."
@@ -187,6 +187,7 @@ def main():
 		os.system("rm %s/*.fastq"%(prj_tree.origin))
 		for infile in infiles:
 			gunzip = subprocess.call("gunzip %s "%(infile),shell=True)
+		os.chdir("%s"%(prj_tree.home))
 	except:
 		print "The zip file is not exists!"
 		pass
@@ -203,6 +204,7 @@ def main():
 		print infiles[1]	
 		os.chdir("%s"%(prj_tree.origin))
 		merge = subprocess.call("pear -j 4 -q 20 -f %s -r %s -o %s "%(infiles[0],infiles[1], prj_name),shell=True)
+		os.chdir("%s"%(prj_tree.home))
 	#'''
 	
 	#'''
@@ -293,8 +295,8 @@ def main():
 	print 'All subprocesses done.'
 	'''
 	#'''
-	"""
-	#"""
+
+
 	os.system("rm %s/IgBLAST_result_*_get_assignment_info.txt"%prj_tree.igblast_data)
 	os.system("rm %s/IgBLAST_result_*_get_recombanation_info.txt"%prj_tree.igblast_data)
 	os.system("rm %s/IgBLAST_result_*_get_CDR3_info.txt"%prj_tree.igblast_data)
@@ -310,12 +312,12 @@ def main():
 	os.system("cat %s/IgBLAST_result_*_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	os.system("cat %s/IgBLAST_result_*_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	os.system("cat %s/IgBLAST_result_*_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
-	#"""
+
 
 if __name__ == '__main__':
 	print 'Parent process %s'%os.getpid()
 	prj_folder = os.getcwd()
-	#prj_tree = create_folders(prj_folder)
+	prj_tree = create_folders(prj_folder)
 	prj_tree = ProjectFolders(prj_folder)
 	
 	prj_name = fullpath2last_folder(prj_tree.home)
