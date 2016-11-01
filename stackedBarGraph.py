@@ -33,7 +33,7 @@ __status__ = "Development"
 
 import numpy as np
 from matplotlib import pyplot as plt
-
+import copy
 ###############################################################################
 
 class StackedBarGrapher:
@@ -59,6 +59,7 @@ class StackedBarGrapher:
         self.stackedBarPlot(ax1,
                             d,
                             d_colors,
+                            showFirst=2,
                             edgeCols=['#000000']*7,
                             xLabels=d_labels,
                             )
@@ -160,7 +161,6 @@ class StackedBarGrapher:
         else:
             data_copy = np.copy(data).transpose()
         data_shape = np.shape(data_copy)
-
         # determine the number of bars and corresponding levels from the shape of the data
         num_bars = data_shape[1]
         levels = data_shape[0]
@@ -175,8 +175,7 @@ class StackedBarGrapher:
 
         # stack the data --
         # replace the value in each level by the cumulative sum of all preceding levels
-        data_stack = np.reshape([float(i) for i in np.ravel(np.cumsum(data_copy, axis=0))], data_shape)
-
+        data_stack = np.reshape([i for i in np.ravel(np.cumsum(data_copy, axis=0))], data_shape)
         # scale the data is needed
         if scale:
             data_copy /= data_stack[levels-1]
@@ -218,14 +217,16 @@ class StackedBarGrapher:
 # plot
 
         if edgeCols is None:
-            #edgeCols = ["none"]*len(cols)
-			edgeCols = ["black"]*len(cols)
+            edgeCols = ["none"]*len(cols)
+			#edgeCols = ["black"]*len(cols)
 
         # take cae of gaps
         gapd_widths = [i - gap for i in widths]
-
+        
         # bars
+
         ax.bar(x,
+               #x
                data_stack[0],
                color=cols[0],
                edgecolor=edgeCols[0],
@@ -233,7 +234,7 @@ class StackedBarGrapher:
                linewidth=0.5,
                align='center'
                )
-
+        
         for i in np.arange(1,levels):
             ax.bar(x,
                    data_copy[i],
@@ -244,7 +245,7 @@ class StackedBarGrapher:
                    linewidth=0.5,
                    align='center'
                    )
-
+        
         # borders
         ax.spines["top"].set_visible(True)
         ax.spines["right"].set_visible(True)

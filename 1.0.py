@@ -173,7 +173,7 @@ def get_assignment_and_recombanation_info(infile):
 
 def main():
 	print "Begin!"
-
+	#"""
 	#'''
 	
 	print "Gunzip..."
@@ -295,6 +295,7 @@ def main():
 	print 'All subprocesses done.'
 	'''
 	#'''
+	#"""
 
 
 	os.system("rm %s/IgBLAST_result_*_get_assignment_info.txt"%prj_tree.igblast_data)

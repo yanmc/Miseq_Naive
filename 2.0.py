@@ -203,12 +203,14 @@ def get_identity_dict(maturation_rate_dict):
 def get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_alignment_dict, pic_type, germline_ids):
 	outputfile1 = open("%s/%s_%s_%s_gene_usage%s.txt"%(prj_tree.data, prj_name, chain_type, germline_type, pic_type), "w")
 	output_handle = csv.writer(outputfile1, delimiter="\t")
-	geneusage_data, columns, max_value = [], [], 0
+	geneusage_data, columns, max_value, gene_usage_ids = [], [], 0, []
 	for germ_id in sorted(germline_ids):
 		try:
 			NoMut_reads_num = len(NoMut_alignment_dict[germ_id])
+			NoMut_reads = NoMut_alignment_dict[germ_id]
 		except KeyError:
 			NoMut_reads_num = 0
+			NoMut_reads = []
 		try:
 			Mut_reads_num = len(Mut_alignment_dict[germ_id])
 			Mut_reads = Mut_alignment_dict[germ_id]
@@ -216,6 +218,7 @@ def get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_
 			Mut_reads_num = 0
 			Mut_reads = []
 		reads_num = NoMut_reads_num + Mut_reads_num
+		
 		Mut_reads_num_i = get_identity_list(Mut_reads, identity_dict)
 		Mut_reads_num_i = continuous_subtraction_list(Mut_reads_num_i)
 		Mut_reads_num_i = Mut_reads_num_i[1:] #delete < ide 75% reads
@@ -225,7 +228,13 @@ def get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_
 		if max_value < sum(result_line[1:]):
 			max_value = sum(result_line[1:])
 		columns.append(germ_id)
+		gene_usage_ids.append([NoMut_reads, Mut_reads])
 	outputfile1.close()
+	pickle_file = '%s/%s_gene_usage_info_dump_%s_%s%s'%(prj_tree.tmp, prj_name, germline_type, chain_type, pic_type)
+	pickle_file_handle = open(pickle_file, 'wb')
+	dump_tuple = (columns, geneusage_data, gene_usage_ids)
+	pickle.dump(dump_tuple, pickle_file_handle)
+	pickle_file_handle.close()
 	return geneusage_data, columns
 def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type):
 	SBG = StackedBarGrapher()
@@ -259,10 +268,7 @@ def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germl
 				data[index][n_index] = number
 		except KeyError:
 			pass		
-		
-	print data
-	#sys.exit(0)
-	#d_labels = columns
+
 	d_labels = gene_names
 	d_colors = ['#2166ac', '#fee090', '#fdbb84', '#fc8d59', '#e34a33', '#b30000', '#777777', '#2166ac', '#fee090', '#fdbb84', '#fc8d59', '#e34a33', '#b30000', '#777777','#2166ac', '#fee090', '#fdbb84', '#fc8d59', '#e34a33', '#b30000', '#777777']
 	rows = ['%d%%' % x for x in range(75, 101)]
@@ -280,7 +286,7 @@ def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germl
 		y_ticks_tick.append(tick_log*1)
 		y_ticks_label.append(tick_log*1)
 		
-	print y_ticks_tick, y_ticks_label
+
 	while len(y_ticks_tick) > 14:
 		if len(y_ticks_tick) %2 == 0:
 			y_ticks_tick, y_ticks_label = y_ticks_tick[1:][::2], y_ticks_label[1:][::2]
@@ -288,12 +294,7 @@ def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germl
 		else:
 			y_ticks_tick, y_ticks_label = y_ticks_tick[::2], y_ticks_label[::2]
 	y_ticks = [y_ticks_tick, y_ticks_label]
-	print y_ticks
 	ax = fig.add_subplot(111)
-	#x = np.arange(0,len(gene_names))
-	#data_copy = np.copy(data).transpose()
-	#data_shape = np.shape(data_copy)
-	#data_stack = np.reshape([i for i in np.ravel(np.cumsum(data_copy, axis=0))], data_shape)
 	SBG.stackedBarPlot(ax,
 	                   data,
 	                   d_colors,
@@ -489,7 +490,7 @@ def main():
 		#Step2: Plot gene usage and maturation rate
 		plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type)
 		plot_maturation_rate(maturation_rate_dict, pic_type, germline_type)
-		
+	
 if __name__ == '__main__':
 
 	pool_size = multiprocessing.cpu_count()
@@ -498,6 +499,7 @@ if __name__ == '__main__':
 	prj_folder = os.getcwd()
 	prj_tree = ProjectFolders(prj_folder)
 	prj_name = fullpath2last_folder(prj_tree.home)
+	start = time.time()
 	if "K" in prj_name:
 		chain_type = "K"
 		main()
@@ -507,7 +509,7 @@ if __name__ == '__main__':
 	else:
 		for chain_type in ("H", "K", "L"):
 			main()
-	start = time.time()
+	
 	
 	
 	
