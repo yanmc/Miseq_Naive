@@ -251,6 +251,15 @@ def main():
 		print count
 		print "There are  %i records have been Converted!" %(count)
 	#'''
+	os.system("mv %s/%s.assembled_trimed.fasta %s/%s.assembled_trimed_old_id.fasta"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name))
+	merged_file = "%s/%s.assembled_trimed_old_id.fasta"%(prj_tree.origin, prj_name)
+	new_id_merged_file = open("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name), "w")
+	reader = SeqIO.parse(merged_file, "fasta")
+	index = 1
+	for record in reader:
+		new_id_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name, index), description = '')
+		index += 1
+		SeqIO.write(new_id_record, new_id_merged_file, "fasta")
 	'''
 	print "Unique fasta file..."
 	unique_fasta(prj_folder)
