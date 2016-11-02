@@ -130,9 +130,12 @@ def get_assignment_and_recombanation_info(infile):
 		con=con.replace('\'','')
 		con=con[1:-1]
 		hit = re.findall('# Query',con)
-		hit_v=re.match(r'^V.+:.+',con)
-		hit_d=re.match(r'^D.+:.+',con)
-		hit_j=re.match(r'^J.+:.+',con)
+		#hit_v=re.match(r'^V.+:.+',con)
+		#hit_d=re.match(r'^D.+:.+',con)
+		#hit_j=re.match(r'^J.+:.+',con)
+		hit_v=re.match(r'^V.+%s.+'%prj_name,con)
+		hit_d=re.match(r'^D.+%s.+'%prj_name,con)
+		hit_j=re.match(r'^J.+%s.+'%prj_name,con)
 		if hit_v:
 			a_v=hit_v.group()
 			b_v = a_v.split(',')
@@ -173,98 +176,149 @@ def get_assignment_and_recombanation_info(infile):
 
 def main():
 	print "Begin!"
-	#"""
-	#'''
 	
-	print "Gunzip..."
-	try:
-		infiles = glob.glob("%s/*.fastq.gz"%(prj_tree.origin))
-		infiles = sorted(infiles)
 
-		print infiles[0]
-		print infiles[1]	
-		os.chdir("%s"%(prj_tree.origin))
-		os.system("rm %s/*.fastq"%(prj_tree.origin))
-		for infile in infiles:
-			gunzip = subprocess.call("gunzip %s "%(infile),shell=True)
-		os.chdir("%s"%(prj_tree.home))
-	except:
-		print "The zip file is not exists!"
-		pass
-	#'''
 	
-	#'''
-	if os.path.exists("%s/%s.assembled.fastq"%(prj_tree.origin, prj_name)):
-		pass
+	if prj_name == "Naive_H" :
+		if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
+			pass
+		else:
+			print prj_name
+			#os.system("cp ../Naive_IgM/origin/Naive_IgM.assembled_trimed.fasta ./origin/")
+			#os.system("cp ../Naive_IgD/origin/Naive_IgD.assembled_trimed.fasta ./origin/")
+			Naive_IgD = SeqIO.parse('%s/Naive_IgD.assembled_trimed.fasta'%prj_tree.origin, 'fasta')
+			Naive_IgM = SeqIO.parse('%s/Naive_IgM.assembled_trimed.fasta'%prj_tree.origin, 'fasta')
+			outfile = open('%s/%s.assembled_trimed.fasta'%(prj_tree.origin, prj_name), "w")
+			index = 1
+			for record in Naive_IgD:
+				new_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name,index), description = '')
+				index += 1
+				SeqIO.write(new_record, outfile, "fasta")
+			print index
+
+			for record in Naive_IgM:
+				new_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name,index), description = '')
+				index += 1
+				SeqIO.write(new_record, outfile, "fasta")
+			print index
+			os.system("rm  ./origin/Naive_IgM.assembled_trimed.fasta")
+			os.system("rm  ./origin/Naive_IgD.assembled_trimed.fasta")
+	elif prj_name == "Nsw_H":
+		if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
+			pass
+		else:
+			print prj_name
+			os.system("cp ../Nsw_IgM/origin/Nsw_IgM.assembled_trimed.fasta ./origin/")
+			os.system("cp ../Nsw_IgD/origin/Nsw_IgD.assembled_trimed.fasta ./origin/")
+			Naive_IgD = SeqIO.parse('%s/Nsw_IgD.assembled_trimed.fasta'%prj_tree.origin, 'fasta')
+			Naive_IgM = SeqIO.parse('%s/Nsw_IgM.assembled_trimed.fasta'%prj_tree.origin, 'fasta')
+			outfile = open('%s/%s.assembled_trimed.fasta'%(prj_tree.origin, prj_name), "w")
+			index = 1
+			for record in Naive_IgD:
+				new_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name,index), description = '')
+				index += 1
+				SeqIO.write(new_record, outfile, "fasta")
+			print index
+
+			for record in Naive_IgM:
+				new_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name,index), description = '')
+				index += 1
+				SeqIO.write(new_record, outfile, "fasta")
+			print index
+			os.system("rm  ./origin/Nsw_IgM.assembled_trimed.fasta")
+			os.system("rm  ./origin/Nsw_IgD.assembled_trimed.fasta")
 	else:
-		print "Merging..."
-		infiles = glob.glob("%s/*.fastq"%(prj_tree.origin))
+		#'''
+		print "Gunzip..."
+		try:
+			infiles = glob.glob("%s/*.fastq.gz"%(prj_tree.origin))
+			infiles = sorted(infiles)
+
+			print infiles[0]
+			print infiles[1]	
+			os.chdir("%s"%(prj_tree.origin))
+			os.system("rm %s/*.fastq"%(prj_tree.origin))
+			for infile in infiles:
+				gunzip = subprocess.call("gunzip -c %s > %s.old_name"%(infile, infile),shell=True)
+			os.chdir("%s"%(prj_tree.home))
+		except:
+			print "The zip file is not exists!"
+			pass
+		#'''
+
+
+		#'''
+		if os.path.exists("%s/%s.assembled.fastq"%(prj_tree.origin, prj_name)):
+			pass
+		else:
+			print "Merging..."
+			infiles = glob.glob("%s/*.fastq"%(prj_tree.origin))
+			infiles = sorted(infiles)
+			print infiles[0]
+			print infiles[1]	
+			os.chdir("%s"%(prj_tree.origin))
+			merge = subprocess.call("pear -j 4 -q 20 -f %s -r %s -o %s "%(infiles[0],infiles[1], prj_name),shell=True)
+			os.chdir("%s"%(prj_tree.home))
+		#'''
+
+		#'''
+		if os.path.exists("%s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name)):
+			pass
+		else:
+			print "Quality contorl..."
+			infiles = glob.glob("%s/*.assembled.fastq"%(prj_tree.origin))
+			trim_files, bad_list = [], []
+			for the_file in infiles:
+				trim_fastq_by_quality(the_file,prj_folder,bad_list)
+		#sys.exit(0)
+		#'''
+
+		'''
+		print "Filter..."
+		infiles = glob.glob("%s/*assembled_trimed.fastq"%(prj_tree.origin))
 		infiles = sorted(infiles)
-		print infiles[0]
-		print infiles[1]	
-		os.chdir("%s"%(prj_tree.origin))
-		merge = subprocess.call("pear -j 4 -q 20 -f %s -r %s -o %s "%(infiles[0],infiles[1], prj_name),shell=True)
-		os.chdir("%s"%(prj_tree.home))
-	#'''
+		r1_infile, r1_id_list = SeqIO.index(infiles[0], "fastq"), []
+		r2_infile, r2_id_list = SeqIO.index(infiles[1], "fastq"), []
+
+		for ids in r1_infile.values():
+			if len(ids.seq) > 10:
+				r1_id_list.append(ids.id)
+		for	ids in r2_infile.values():
+			if len(ids.seq) > 10:
+				r2_id_list.append(ids.id)
+		pair_reads = set(r1_id_list) & set(r2_id_list)
+
+		r1_file_writer, r2_file_writer = open("%s/%s_R1_filter.fastq"%(prj_tree.origin, prj_name), 'w'), open("%s/%s_R2_filter.fastq"%(prj_tree.origin, prj_name), 'w')
+		for read_id in list(pair_reads):
+			if read_id not in bad_list:
+				SeqIO.write(r1_infile[read_id], r1_file_writer, "fastq")
+				SeqIO.write(r2_infile[read_id], r2_file_writer, "fastq")
+		'''
+
+		#'''
+		if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
+			pass
+		else:
+			print "Convert fastq to fasta..."
+			merged_file = "%s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name)
+			fname, suffix = os.path.splitext(merged_file)
+			count = SeqIO.convert(merged_file, "fastq","%s.fasta"%fname, "fasta")
+			print count
+			print "There are  %i records have been Converted!" %(count)
+		#'''
+
+		#'''
+		os.system("mv %s/%s.assembled_trimed.fasta  %s/%s.assembled_trimed.fasta.old_name"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name))
+		Naive_old = SeqIO.parse('%s/%s.assembled_trimed.fasta.old_name'%(prj_tree.origin, prj_name), 'fasta')
+		outfile = open('%s/%s.assembled_trimed.fasta'%(prj_tree.origin, prj_name), "w")
+		index = 1
+		for record in Naive_old:
+			new_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name,index), description = '')
+			index += 1
+			SeqIO.write(new_record, outfile, "fasta")
+
+		#'''
 	
-	#'''
-	if os.path.exists("%s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name)):
-		pass
-	else:
-		print "Quality contorl..."
-		infiles = glob.glob("%s/*.assembled.fastq"%(prj_tree.origin))
-		trim_files, bad_list = [], []
-		for the_file in infiles:
-			trim_fastq_by_quality(the_file,prj_folder,bad_list)
-	#sys.exit(0)
-	#'''	
-	'''
-	print "Filter..."
-	infiles = glob.glob("%s/*assembled_trimed.fastq"%(prj_tree.origin))
-	infiles = sorted(infiles)
-	r1_infile, r1_id_list = SeqIO.index(infiles[0], "fastq"), []
-	r2_infile, r2_id_list = SeqIO.index(infiles[1], "fastq"), []
-	
-	for ids in r1_infile.values():
-		if len(ids.seq) > 10:
-			r1_id_list.append(ids.id)
-	for	ids in r2_infile.values():
-		if len(ids.seq) > 10:
-			r2_id_list.append(ids.id)
-	pair_reads = set(r1_id_list) & set(r2_id_list)
-	
-	r1_file_writer, r2_file_writer = open("%s/%s_R1_filter.fastq"%(prj_tree.origin, prj_name), 'w'), open("%s/%s_R2_filter.fastq"%(prj_tree.origin, prj_name), 'w')
-	for read_id in list(pair_reads):
-		if read_id not in bad_list:
-			SeqIO.write(r1_infile[read_id], r1_file_writer, "fastq")
-			SeqIO.write(r2_infile[read_id], r2_file_writer, "fastq")
-	'''
-	
-	#'''
-	if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
-		pass
-	else:
-		print "Convert fastq to fasta..."
-		merged_file = "%s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name)
-		fname, suffix = os.path.splitext(merged_file)
-		count = SeqIO.convert(merged_file, "fastq","%s.fasta"%fname, "fasta")
-		print count
-		print "There are  %i records have been Converted!" %(count)
-	#'''
-	os.system("mv %s/%s.assembled_trimed.fasta %s/%s.assembled_trimed_old_id.fasta"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name))
-	merged_file = "%s/%s.assembled_trimed_old_id.fasta"%(prj_tree.origin, prj_name)
-	new_id_merged_file = open("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name), "w")
-	reader = SeqIO.parse(merged_file, "fasta")
-	index = 1
-	for record in reader:
-		new_id_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name, index), description = '')
-		index += 1
-		SeqIO.write(new_id_record, new_id_merged_file, "fasta")
-	'''
-	print "Unique fasta file..."
-	unique_fasta(prj_folder)
-	
-	'''
 	#Step 2: Split to little files
 	print "Step 2: Split to little files"
 	record_iter = SeqIO.parse(open("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)), "fasta")
@@ -275,7 +329,7 @@ def main():
 		handle.close()
 		print "Wrote %i records to %s" % (count, filename)
 	files_num = i+1
-	
+		
 	#'''
 	#Step 5: Mapping, Multiple processing
 	print "Begin IgBLAST..."
@@ -304,7 +358,7 @@ def main():
 	print 'All subprocesses done.'
 	'''
 	#'''
-	#"""
+
 
 
 	os.system("rm %s/IgBLAST_result_*_get_assignment_info.txt"%prj_tree.igblast_data)
