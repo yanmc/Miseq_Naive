@@ -237,6 +237,7 @@ def get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_
 	pickle_file_handle.close()
 	return geneusage_data, columns
 def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type):
+	detected_genes = [x.split('*')[0] for x in columns]
 	SBG = StackedBarGrapher()
 	d = np.array(geneusage_data)
 	total_number = np.sum(d)
@@ -312,7 +313,7 @@ def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germl
 	plt.tight_layout()
 	for t in ax.xaxis.get_ticklabels():
 		t.set_horizontalalignment('center')
-		if str(t).split("'")[1] in list(gene_number_dict.keys()):
+		if str(t).split("'")[1] in detected_genes:
 			t.set_color('blue')
 			
 	plt.savefig('%s/%s_%s_%s_gene_usage%s.png'%(prj_tree.figure, prj_name, chain_type, germline_type, pic_type), dpi=300)
@@ -392,6 +393,7 @@ def main():
 	germline_fasta = load_fasta_dict("%s/20150429-human-gl-vdj.fasta"%prj_tree.igblast_database)
 	all_germline_ids = germline_fasta.keys()
 	coverage80_reads_list_V, coverage80_reads_list_J = [], []
+	print time.time()
 	for germline_type in ('V','J'):	
 		germline_gene_list = get_germline_gene(germline_type, chain_type)
 		#'''
@@ -432,7 +434,7 @@ def main():
 					pass
 		print "coverage80_reads_list_V", len(coverage80_reads_list_V),len(coverage80_reads_list_J)
 	#Step2 : get real reads Variable region, V gene region and CDR3 region
-
+	print time.time()
 	Variable_region_record_dict = SeqIO.index("%s/%s_%s_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
 	V_gene_region_record_dict = SeqIO.index("%s/%s_%s_V_gene_region.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
 	CDR3_region_record_dict = SeqIO.index("%s/%s_%s_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
@@ -441,6 +443,7 @@ def main():
 	real_reads_out_file, real_reads_out_fasta = csv.writer(open("%s/%s_%s_real_reads.txt"%(prj_tree.reads, prj_name, chain_type), 'w'), delimiter = "\t"), open("%s/%s_%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type), 'w')
 	V_gene_real_reads_out_fasta, CDR3_real_reads_out_fasta = open("%s/%s_%s_real_reads_V_region.fasta"%(prj_tree.reads, prj_name, chain_type), 'w'), open("%s/%s_%s_real_reads_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type), 'w')
 	NoCDR3_real_reads_out_fasta = open("%s/%s_%s_real_reads_No_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type), 'w')
+	print time.time()
 	for read_id in real_reads:
 		real_reads_out_file.writerow([read_id])
 		SeqIO.write(Variable_region_record_dict[read_id], real_reads_out_fasta, "fasta")
@@ -453,6 +456,7 @@ def main():
 	CDR3_real_reads_out_fasta.close()
 	real_reads_out_fasta.close()
 	#Step2 Over	
+	print time.time()
 	for germline_type in ('V','J'):	
 		germline_gene_list = get_germline_gene(germline_type, chain_type)
 		pic_type = ""
@@ -465,7 +469,7 @@ def main():
 		#Step2: Plot gene usage and maturation rate
 		plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type)
 		plot_maturation_rate(maturation_rate_dict, pic_type, germline_type)
-		
+	print time.time()
 	#Step 3 Unique fasta file
 	Variable_region_fasta_file = "%s/%s_%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type)
 	Variable_region_unique_id_list, Variable_region_dict_unique = unique_fasta(Variable_region_fasta_file)
@@ -474,7 +478,7 @@ def main():
 	CDR3_region_fasta_file = "%s/%s_%s_real_reads_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type)
 	CDR3_region_unique_id_list, CDR3_region_dict_unique = unique_fasta(CDR3_region_fasta_file)
 	
-	
+	print time.time()
 	Variable_region_fasta_file = SeqIO.index("%s/%s_%s_real_reads_Variable_region_unique.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
 	Variable_region_unique_id_list = list(Variable_region_fasta_file.keys())
 	#print Variable_region_unique_id_list
@@ -490,7 +494,7 @@ def main():
 		#Step2: Plot gene usage and maturation rate
 		plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type)
 		plot_maturation_rate(maturation_rate_dict, pic_type, germline_type)
-	
+	print time.time()	
 if __name__ == '__main__':
 
 	pool_size = multiprocessing.cpu_count()
@@ -499,12 +503,16 @@ if __name__ == '__main__':
 	prj_folder = os.getcwd()
 	prj_tree = ProjectFolders(prj_folder)
 	prj_name = fullpath2last_folder(prj_tree.home)
+	print time.time()
 	start = time.time()
 	if "K" in prj_name:
 		chain_type = "K"
 		main()
 	elif "L" in prj_name:
 		chain_type = "L"
+		main()
+	elif "H" in prj_name:
+		chain_type = "H"
 		main()
 	else:
 		for chain_type in ("H", "K", "L"):
