@@ -113,6 +113,7 @@ def unique_fasta(prj_folder):
 		seqrecord = SeqRecord(seq, id =ID)
 		SeqIO.write(seqrecord, writer, "fasta")
 	print "The number of unique reads in fasta file is %d"%len(dict_unique)
+	writer.close()
 
 def get_assignment_and_recombanation_info(infile):
 	fname = retrieve_name_body(infile)
@@ -173,7 +174,9 @@ def get_assignment_and_recombanation_info(infile):
 			result2[-1].extend(line)		
 	writer2.writerows(result1)
 	writer3.writerows(result2)
-
+	outfile.close()
+	outfile2.close()
+	outfile3.close()
 def main():
 	print "Begin!"
 	
@@ -203,6 +206,7 @@ def main():
 			print index
 			os.system("rm  ./origin/Naive_IgM.assembled_trimed.fasta")
 			os.system("rm  ./origin/Naive_IgD.assembled_trimed.fasta")
+			outfile.close()
 	elif prj_name == "Nsw_H":
 		if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
 			pass
@@ -227,6 +231,7 @@ def main():
 			print index
 			os.system("rm  ./origin/Nsw_IgM.assembled_trimed.fasta")
 			os.system("rm  ./origin/Nsw_IgD.assembled_trimed.fasta")
+			outfile.close()
 	else:
 		#'''
 		print "Gunzip..."
@@ -239,7 +244,7 @@ def main():
 			os.chdir("%s"%(prj_tree.origin))
 			os.system("rm %s/*.fastq"%(prj_tree.origin))
 			for infile in infiles:
-				gunzip = subprocess.call("gunzip -c %s > %s.old_name"%(infile, infile),shell=True)
+				gunzip = subprocess.call("gunzip -c %s > %s.fastq"%(infile, infile),shell=True)
 			os.chdir("%s"%(prj_tree.home))
 		except:
 			print "The zip file is not exists!"
@@ -306,7 +311,6 @@ def main():
 			print count
 			print "There are  %i records have been Converted!" %(count)
 		#'''
-
 		#'''
 		os.system("mv %s/%s.assembled_trimed.fasta  %s/%s.assembled_trimed.fasta.old_name"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name))
 		Naive_old = SeqIO.parse('%s/%s.assembled_trimed.fasta.old_name'%(prj_tree.origin, prj_name), 'fasta')
@@ -316,7 +320,7 @@ def main():
 			new_record = SeqRecord(record.seq, id = "%s_%s"%(prj_name,index), description = '')
 			index += 1
 			SeqIO.write(new_record, outfile, "fasta")
-
+		outfile.close()
 		#'''
 	
 	#Step 2: Split to little files
@@ -328,8 +332,8 @@ def main():
 		count = SeqIO.write(batch, handle, "fasta")
 		handle.close()
 		print "Wrote %i records to %s" % (count, filename)
-	files_num = i+1
-		
+	#files_num = i+1
+
 	#'''
 	#Step 5: Mapping, Multiple processing
 	print "Begin IgBLAST..."

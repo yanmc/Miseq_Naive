@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-misc-merge_IgD_IgM_data.py 
+3.0.py 
 
 Created by Mingchen on 2015-05-15.
 Copyright (c) 2015 __MyCompanyName__. All rights reserved.
@@ -56,7 +56,6 @@ def get_naive_right_allele(data_dict, pic_type, germline_gene_list, germline_typ
 	for (key, value) in data_dict.items():
 		gene_number_dict.setdefault(key.split('*')[0], []).append((key, value))
 	for (key, value) in  gene_number_dict.items():
-		print key, value
 		if len(value) > 1:
 			sorted_value = sorted(value, key = lambda z : z[1], reverse=True)
 			if float(sorted_value[1][1])/float(sorted_value[0][1]) < 0.001:
@@ -66,8 +65,8 @@ def get_naive_right_allele(data_dict, pic_type, germline_gene_list, germline_typ
 		else:
 			sorted_value = [value[0][0]]
 		result_dict[key] = sorted_value
-	print result_dict
-	result_file = csv.writer(open('%s/%s_%s_%s_right_allele_usage%s.txt'%(prj_tree.data, prj_name, chain_type, germline_type, pic_type),"w"), delimiter="\t")
+	result_file_name = open('%s/%s_%s_%s_right_allele_usage%s.txt'%(prj_tree.data, prj_name, chain_type, germline_type, pic_type),"w")
+	result_file = csv.writer(result_file_name, delimiter="\t")
 	result_file.writerow(["Germline gene", "Allele 1", "Allele 2"])
 	max_freq_allele_dict = {}
 	for germline_gene in sorted(germline_gene_list):
@@ -81,8 +80,9 @@ def get_naive_right_allele(data_dict, pic_type, germline_gene_list, germline_typ
 				max_freq_allele_dict[germline_gene] = value[0]
 		except:
 			pass
+	result_file_name.close()
 	return max_freq_allele_dict
-def get_novel_allele(result_ids_dict, pic_type, germline_gene_list, germline_type, max_freq_allele_dict, germline_fasta, unique_real_reads_fasta):
+def get_novel_allele(assignment_dict, result_ids_dict, pic_type, germline_gene_list, germline_type, max_freq_allele_dict, germline_fasta, unique_real_reads_fasta):
 	gene_reads_id_dict = {}
 	for (key, value) in result_ids_dict.items():
 		gene_reads_id_dict.setdefault(key.split('*')[0], []).extend(value)
@@ -90,12 +90,14 @@ def get_novel_allele(result_ids_dict, pic_type, germline_gene_list, germline_typ
 		print key, type(value), len(value)
 
 	for genmline_gene in germline_gene_list:
+		print "Processing gene: %s"%genmline_gene
 		try:
 			max_freq_allele = max_freq_allele_dict[genmline_gene]
 		except KeyError:
 			continue
 		all_reads_ids_list = gene_reads_id_dict[genmline_gene]
-		get_mutation_patterns(all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta)
+		get_mutation_patterns_v2(assignment_dict, all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta, germline_type)
+		#get_mutation_patterns( all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta)
 		#get_mutation_spectrum(all_reads_ids_list, max_freq_allele)
 
 def get_mutation_patterns(all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta):
@@ -103,7 +105,7 @@ def get_mutation_patterns(all_reads_ids_list, max_freq_allele, germline_fasta, u
 	print type(all_reads_ids_list), len(all_reads_ids_list)
 	for read_id in all_reads_ids_list:
 		ref_seq_id, test_seq_id = max_freq_allele, read_id
-		print ref_seq_id, type(test_seq_id),len(test_seq_id), type(germline_fasta), type(unique_real_reads_fasta)
+		#print ref_seq_id, type(test_seq_id),len(test_seq_id), type(germline_fasta), type(unique_real_reads_fasta)
 		ref_seqrecord = germline_fasta[ref_seq_id]
 		test_seqrecord = unique_real_reads_fasta[test_seq_id]
 		ref_seq_id, test_seq_id = ref_seq_id.replace('/','').replace('*',''), test_seq_id.replace('/','').replace('*','')
@@ -124,8 +126,6 @@ def get_mutation_patterns(all_reads_ids_list, max_freq_allele, germline_fasta, u
 		mutation_patterns_group.setdefault(value[0], []).append((key, value[1]))
 	data = np.zeros((len(mutation_patterns_group)-1, len(germline_fasta[max_freq_allele])))
 	for index, (group_number, value) in enumerate(mutation_patterns_group.items()):
-		print group_number, value
-
 		if index != 0:
 			position_mut_list = [item[1]  for item in value]
 			for position_list in position_mut_list:
@@ -139,6 +139,7 @@ def get_mutation_patterns(all_reads_ids_list, max_freq_allele, germline_fasta, u
 	#	mutation_patterns_writer.writerow(line)
 	mutation_patterns_writer.writerows(data)
 	mutation_patterns_file.close()
+	return data
 def get_mutation_spectrum(all_reads_ids_list, max_freq_allele, germline_fasta):
 	pass
 
@@ -157,19 +158,21 @@ def parse_pair_clustal2(align_file):
 	zip_seqs 	= zip(seq1, seq2)
 	#zip_seqs	= [(x, y) for x, y in zip_seqs if x !="-" and y != "-"]		# remove insertions from either one
 	mismatches	= sum([x != y for x, y in zip_seqs])
-	mutation_patterns_result = []						# count total matches
+	mutation_patterns_result = []
 	for index, (x, y) in enumerate(zip_seqs):
 		if x != y:
 			position = index + 1
 			mutation_patterns_result.append((position, x, y))
 	return mutation_patterns_result, mismatches
 def caculate_mutation_patterns(clustalw_result, read_id, mutation_patterns_dict):
-	result = csv.writer(open('%s_mutation_patterns.txt'%prj_name,'a+'),delimiter = '\t')
+	result_file = open('%s_mutation_patterns.txt'%prj_name,'a+')
+	result = csv.writer(,delimiter = '\t')
 	fs = glob.glob(clustalw_result)
 	for infile in fs:
-		print "processing %s"%infile
+		#print "processing %s"%infile
 		mutation_patterns_result, mismatches = parse_pair_clustal2(infile)
 		mutation_patterns_dict[read_id] = (mismatches, mutation_patterns_result)
+	result_file.close()
 	return mutation_patterns_dict
 def do_clustalw(file_for_clustalw):
 	infiles = glob.glob(file_for_clustalw)
@@ -178,23 +181,109 @@ def do_clustalw(file_for_clustalw):
 	clustalw_exe = r"/zzh_gpfs/apps/clustalw-2.1-linux-x86_64-libcppstatic/clustalw2"
 	assert os.path.isfile(clustalw_exe), "Clustal W executable missing"
 	for in_file in infiles:
-		print "Processing %s ......."%in_file
+		#print "Processing %s ......."%in_file
 		in_file = in_file.replace('&','\&')
 		in_file = in_file.replace('*','\*')
 		clustalw_cline = ClustalwCommandline(clustalw_exe, infile=in_file)
 		stdout, stderr = clustalw_cline()
 
+def get_mutation_patterns_v2(assignment_dict, all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta, germline_type):
+	mutation_patterns_dict = {}
+	print type(all_reads_ids_list), len(all_reads_ids_list)
+	for read_index, read_id in enumerate(all_reads_ids_list):
+		if read_index % 10000 == 0:
+			print "%s has been processed..."%read_index
+		ref_seq_id, test_seq_id = max_freq_allele, read_id
+		assignment_result_VDJ = assignment_dict[test_seq_id]
+		for item in assignment_result_VDJ:
+			if item[0] == germline_type and item[4] == ref_seq_id:
+				assignment_result = item
+				assign_start = int(assignment_result[1])
+				query_seq, ref_seq = assignment_result[2], assignment_result[3]
+				ref_seq, query_seq, trimmed_ref_len = remove_ref_insertion(ref_seq, query_seq)
+				ref_query_seq_zip = zip(ref_seq, query_seq)
+				mismatches	= sum([x != y for x, y in ref_query_seq_zip])
+				mutation_patterns_result = []
+				for index, (x, y) in enumerate(ref_query_seq_zip):
+					if x != y:
+						position = index
+						mutation_patterns_result.append((assign_start+position, x, y))
+				mutation_patterns_dict[read_id] = (mismatches, mutation_patterns_result)
+		if read_id in mutation_patterns_dict.keys():
+			pass
+		else:
+			#print ref_seq_id, type(test_seq_id),len(test_seq_id), type(germline_fasta), type(unique_real_reads_fasta)
+			ref_seqrecord = germline_fasta[ref_seq_id]
+			test_seqrecord = unique_real_reads_fasta[test_seq_id]
+			ref_seq_id, test_seq_id = ref_seq_id.replace('/','').replace('*',''), test_seq_id.replace('/','').replace('*','')
+			out = open('%s_%s_pair.fasta'%(test_seq_id,ref_seq_id),'w')
+			SeqIO.write(ref_seqrecord, out, 'fasta')
+			SeqIO.write(test_seqrecord ,out, 'fasta')
+			out.close()
+			#my_ref_len = len(rank_germ[i])
+			file_for_clustalw = '%s_%s_pair.fasta'%(test_seq_id,ref_seq_id)
+			do_clustalw(file_for_clustalw)
+			clustalw_result = '%s_%s_pair.aln'%(test_seq_id,ref_seq_id)
+			mutation_patterns_dict = caculate_mutation_patterns(clustalw_result, read_id, mutation_patterns_dict)
+			os.system("rm %s_%s_pair.fasta"%(test_seq_id,ref_seq_id))
+			os.system("rm %s_%s_pair.aln"%(test_seq_id,ref_seq_id))
+			os.system("rm %s_%s_pair.dnd"%(test_seq_id,ref_seq_id))
+			
+	
+	mutation_patterns_group = {}
+	for (key, value) in mutation_patterns_dict.items():
+		mutation_patterns_group.setdefault(value[0], []).append((key, value[1]))
+		
+	
+	ref_seq_id_name = max_freq_allele.split('*')[0].replace('/','')
+	pickle_file = '%s/%s_mutation_pattrens_dump_%s_%s_%s'%(prj_tree.tmp, prj_name, germline_type, chain_type, ref_seq_id_name)
+	pickle_file_handle = open(pickle_file, 'wb')
+	dump_tuple = (mutation_patterns_group)
+	pickle.dump(dump_tuple, pickle_file_handle)
+	pickle_file_handle.close()
+	
+	data = np.zeros((len(mutation_patterns_group)-1, len(germline_fasta[max_freq_allele])))
+	for index, (group_number, value) in enumerate(mutation_patterns_group.items()):
+		if index != 0:
+			position_mut_list = [item[1]  for item in value]
+			for position_list in position_mut_list:
+				for position_record in position_list:
+					position = position_record[0]
+					try:
+						data[index-1][position-1] += 1
+					except IndexError:
+						print index, position, group_number, value
+	mutation_patterns_file = open('%s/%s_%s_mutation_patterns.txt'%(prj_tree.data, prj_name, ref_seq_id_name), 'w')
+	mutation_patterns_writer = csv.writer(mutation_patterns_file, delimiter = "\t")
+	#for line in data:
+	#	mutation_patterns_writer.writerow(line)
+	mutation_patterns_writer.writerows(data)
+	mutation_patterns_file.close()
+	return data	
+def load_assignment_dict(IGBLAST_assignment_file):
+	assignment_dict = {}
+	infile = open(IGBLAST_assignment_file,"rU")
+	reader = csv.reader(infile,delimiter = "\t")
+	for index, line in enumerate(reader):
+		assign_result = MyAlignment(line)
+		assignment_dict.setdefault(assign_result.qid, []).append([assign_result.assign_type, assign_result.sstart, assign_result.qseq, assign_result.sseq, assign_result.sid])
+	infile.close()
+	return assignment_dict
 def main():
 	#germline_fasta = load_fasta_dict("/zzh_gpfs02/yanmingchen/HJT-PGM/Naive/Naive_IgM/Igblast_database/20150429-human-gl-vdj.fasta")
 	#unique_real_reads_fasta = load_fasta_dict("%s/%s_H_real_reads_V_region_unique.fasta"%(prj_tree.reads, prj_name))
 	germline_fasta = SeqIO.index("/zzh_gpfs02/yanmingchen/HJT-PGM/Naive/Naive_IgM/Igblast_database/20150429-human-gl-vdj.fasta", "fasta")
-	unique_real_reads_fasta = SeqIO.index("%s/%s_%s_real_reads_V_region.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
+	unique_real_reads_fasta = SeqIO.index("%s/%s_%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
+	IGBLAST_assignment_file = "%s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_name)
+	assignment_dict = load_assignment_dict(IGBLAST_assignment_file)
+	
 	for germline_type in ('V','J'):
 		germline_gene_list = get_germline_gene(germline_type, chain_type)
 		pickle_file = '%s/%s_gene_usage_info_dump_%s_%s%s'%(prj_tree.tmp, prj_name, germline_type, chain_type, pic_type)
 		f_IgH = open(pickle_file, 'rb')
 		pickle_tuple_IgH = pickle.load(f_IgH)
 		columns_IgH, geneusage_data_IgH, gene_usage_ids_IgH = pickle_tuple_IgH[0], pickle_tuple_IgH[1], pickle_tuple_IgH[2]
+		f_IgH.close()
 		print type(gene_usage_ids_IgH), len(gene_usage_ids_IgH)
 		IgH_geneusage_dict, IgH_geneusage_ids_dict = {}, {}
 		for i in range(len( pickle_tuple_IgH[0])):
@@ -204,7 +293,7 @@ def main():
 			print "detect length:", len(gene_usage_ids_IgH[i][0]), len(gene_usage_ids_IgH[i][1]), len(IgH_geneusage_ids_dict[columns_IgH[i]])
 		max_freq_allele_dict = get_naive_right_allele(IgH_geneusage_dict, pic_type, germline_gene_list, germline_type)
 		print "get_novel_allele"
-		get_novel_allele(IgH_geneusage_ids_dict, pic_type, germline_gene_list, germline_type, max_freq_allele_dict, germline_fasta, unique_real_reads_fasta)
+		get_novel_allele(assignment_dict, IgH_geneusage_ids_dict, pic_type, germline_gene_list, germline_type, max_freq_allele_dict, germline_fasta, unique_real_reads_fasta)
 if __name__ == '__main__':
 
 	pool_size = multiprocessing.cpu_count()

@@ -77,6 +77,9 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 		V_gene_region = SeqRecord_gernerator(key, str(result[4]), 'V_gene_region')
 		SeqIO.write(Variable_region, outfile, "fasta")
 		SeqIO.write(V_gene_region, outfile2, "fasta")
+	CDR3_outfile.close()
+	outfile.close()
+	outfile2.close()
 	
 		
 	

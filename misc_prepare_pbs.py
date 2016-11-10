@@ -60,7 +60,7 @@ def check_jobs_done(prj_name, prj_tree, app, igblast_job_ids):
 					#os.system("rm %s"%(errput))
 					os.system("rm %s"%(output))
 			output_log.close()
-
+	log_file_handle.close()
 		#igblast_job_ids.pop(index)
 
 def prepare_cdhit_nucle_pbs(prj_name, prj_tree, fasta_file, round_index):
@@ -134,7 +134,7 @@ def prepare_IgBLAST_jobs(prj_name, prj_tree):
 		-organism human -domain_system imgt -query %s -auxiliary_data optional_file/human_gl.aux \
 		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
 		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \
-		sstrand qcovs qcovhsp' -num_alignments_V 3 -num_alignments_D 3 -num_alignments_J 3 -out \
+		sstrand qcovs qcovhsp' -num_alignments_V 10 -num_alignments_D 10 -num_alignments_J 10 -out \
 		%s/IgBLAST_result_%s.txt &"%(infile, prj_tree.igblast_data, f_ind))
 		handle.close()
 

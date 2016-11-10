@@ -31,7 +31,8 @@ except ImportError:
 def process_recomb(infile, germline_type, germline_gene_list):
 	real_reads_list = []
 	print "Processing %s " %infile
-	reader = csv.reader(open(infile,"rU"),delimiter = "\t")
+	csv_handle = open(infile,"rU")
+	reader = csv.reader(csv_handle,delimiter = "\t")
 	total, count = 0, 0
 	for index, line in enumerate(reader):
 		if len(line) != 1:
@@ -48,6 +49,7 @@ def process_recomb(infile, germline_type, germline_gene_list):
 		if germline_type == "J":
 			if recomb_result.productive == "Yes" and recomb_result.cover_vj == "Yes" and recomb_result.j.split('*')[0] in germline_gene_list:
 				real_reads_list.append(recomb_result.qid)
+	csv_handle.close()
 	return real_reads_list, count, index+1
 
 def process_alignment(infile, germline_type, real_reads_list):
@@ -235,6 +237,7 @@ def get_gene_usage_data(identity_dict, germline_type, NoMut_alignment_dict, Mut_
 	dump_tuple = (columns, geneusage_data, gene_usage_ids)
 	pickle.dump(dump_tuple, pickle_file_handle)
 	pickle_file_handle.close()
+	outputfile1.close()
 	return geneusage_data, columns
 def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germline_type):
 	detected_genes = [x.split('*')[0] for x in columns]
@@ -322,8 +325,8 @@ def plot_gene_usage(geneusage_data, columns, pic_type, germline_gene_list, germl
 def plot_maturation_rate(maturation_rate_dict, pic_type, germline_type):
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
-	maturation_outputfile1 = "%s/%s_%s_%s_maturation_rate.txt"%(prj_tree.data, prj_name, chain_type, germline_type)
-	maturation_output_handle = csv.writer(open(maturation_outputfile1, "w"), delimiter="\t")
+	maturation_outputfile1 = open("%s/%s_%s_%s_maturation_rate.txt"%(prj_tree.data, prj_name, chain_type, germline_type), "w")
+	maturation_output_handle = csv.writer(maturation_outputfile1, delimiter="\t")
 	divergence, number_reads = [], []
 	for (key, value) in sorted(maturation_rate_dict.items()):
 		maturation_output_handle.writerow([key, round(100-float(key), 2), len(value)])
@@ -360,6 +363,7 @@ def plot_maturation_rate(maturation_rate_dict, pic_type, germline_type):
 	plt.savefig('%s/%s_%s_%s_maturation_rate%s.png'%(prj_tree.figure, prj_name, chain_type, germline_type, pic_type))
 	del fig
 	plt.close()
+	maturation_outputfile1.close()
 def get_germline_gene(germline_type, chain_type):
 	if germline_type == 'V' and chain_type == "H":
 		germline_gene_list = HUMAN_GERMLINE['HUMANIGHV']
@@ -440,7 +444,8 @@ def main():
 	CDR3_region_record_dict = SeqIO.index("%s/%s_%s_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
 	real_reads = set(coverage80_reads_list_V) & set(coverage80_reads_list_J)
 	print "real_reads", len(real_reads),  len(set(coverage80_reads_list_V)), len(set(coverage80_reads_list_J))
-	real_reads_out_file, real_reads_out_fasta = csv.writer(open("%s/%s_%s_real_reads.txt"%(prj_tree.reads, prj_name, chain_type), 'w'), delimiter = "\t"), open("%s/%s_%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type), 'w')
+	real_reads_out_file_name, real_reads_out_fasta = open("%s/%s_%s_real_reads.txt"%(prj_tree.reads, prj_name, chain_type), 'w'), open("%s/%s_%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type), 'w')
+	real_reads_out_file = csv.writer(real_reads_out_file_name, delimiter = "\t")
 	V_gene_real_reads_out_fasta, CDR3_real_reads_out_fasta = open("%s/%s_%s_real_reads_V_region.fasta"%(prj_tree.reads, prj_name, chain_type), 'w'), open("%s/%s_%s_real_reads_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type), 'w')
 	NoCDR3_real_reads_out_fasta = open("%s/%s_%s_real_reads_No_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type), 'w')
 	print time.time()
@@ -455,6 +460,8 @@ def main():
 	V_gene_real_reads_out_fasta.close()
 	CDR3_real_reads_out_fasta.close()
 	real_reads_out_fasta.close()
+	real_reads_out_file_name.close()
+	NoCDR3_real_reads_out_fasta.close()
 	#Step2 Over	
 	print time.time()
 	for germline_type in ('V','J'):	
