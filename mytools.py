@@ -16,7 +16,7 @@ from Bio.Blast import NCBIStandalone
 from math import log
 from itertools import imap
 import math
-
+from collections import Counter
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
 
@@ -206,6 +206,8 @@ def donothing():
 #
 # -- BEGIN -- General methods
 #
+def list_counter(list):
+	return Counter(list)
 def get_median(data):
 	data.sort()
 	half = len(data) // 2

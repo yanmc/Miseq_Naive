@@ -65,7 +65,7 @@ def process_alignment(infile, germline_type, real_reads_list):
 		if assign_result.assign_type == germline_type:
 			#if total % 1000 == 0:
 			#	print "%s Done!"%total
-			if assign_result.identity == float(100.00) and assign_result.sstart == 1: #and assign_result.send == assign_result.slen:
+			if assign_result.identity == float(100.00) and assign_result.sstart == 1 and coverage_rate >= 80: #and assign_result.send == assign_result.slen:
 				count1 +=1
 				#print assign_result.qid,assign_result.sid,assign_result.strand, assign_result.qseq, list(assign_result.qseq)
 				#NoMut_reads_list_all.append(assign_result.qid)
@@ -391,7 +391,9 @@ def main():
 	IGBLAST_assignment_file = "%s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_name)
 	IGBLAST_CDR3_file = "%s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_name)	
 	#get V-region, Variable-region, CDR3-region
+	print "Trimming reads ..."
 	trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CDR3_file, origin_record_dict, chain_type)
+	sys.exit(0)
 	#Step0 over
 	#Step 1:get No MUT reads and MUT reads, caculate the Ratio.
 	germline_fasta = load_fasta_dict("%s/20150429-human-gl-vdj.fasta"%prj_tree.igblast_database)

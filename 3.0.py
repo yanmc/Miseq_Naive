@@ -166,7 +166,7 @@ def parse_pair_clustal2(align_file):
 	return mutation_patterns_result, mismatches
 def caculate_mutation_patterns(clustalw_result, read_id, mutation_patterns_dict):
 	result_file = open('%s_mutation_patterns.txt'%prj_name,'a+')
-	result = csv.writer(,delimiter = '\t')
+	result = csv.writer(result_file,delimiter = '\t')
 	fs = glob.glob(clustalw_result)
 	for infile in fs:
 		#print "processing %s"%infile

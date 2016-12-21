@@ -17,6 +17,8 @@ from Bio import SeqIO
 from mytools import *
 from Bio import SeqIO
 def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CDR3_file, origin_record_dict, chain_type):
+	leader_region_outfile = open("%s/%s_%s_leader_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
+	C_region_outfile = open("%s/%s_%s_C_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	CDR3_outfile = open("%s/%s_%s_CDR3.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	CDR3_reader = csv.reader(open(IGBLAST_CDR3_file,"rU"), delimiter = "\t")
 	CDR3_start_dict = {}
@@ -31,7 +33,7 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 	outfile = open("%s/%s_%s_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	outfile2 = open("%s/%s_%s_V_gene_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	reader = csv.reader(open(IGBLAST_assignment_file,"rU"), delimiter = "\t")
-	result = ['Query_ID','query_seq','query_length','Variable_region', 'V_gene_region']
+	result = ['Query_ID','query_seq','query_length','Variable_region', 'V_gene_region', 'Leader_region', 'C_region']
 	assign_position_dict = {}
 	for line in reader:
 		assign_result = MyAlignment(line)
@@ -57,9 +59,13 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 		if (trans_start-1) % 3 == 0:
 			result[3] = query_seq[start -1 :Variable_region_end]
 			result[4] = query_seq[start -1 :V_gene_region_end]
-		else:
+			result[5] = query_seq[ : start -1]
+			result[6] = query_seq[Variable_region_end :]
+ 		else:
 			result[3] = query_seq[(start - 1 + 2 - ((trans_start-1)%3 -1)):Variable_region_end]
 			result[4] = query_seq[(start - 1 + 2 - ((trans_start-1)%3 -1)):V_gene_region_end]
+			result[5] = query_seq[ : (start - 1 + 2 - ((trans_start-1)%3 -1))]
+			result[6] = query_seq[Variable_region_end :]
 		try:
 			CDR3_region_part = query_seq[int(CDR3_start_dict[key]) : ]
 			#CDR3_region_part_protein = CDR3_region_part.translate()
@@ -74,12 +80,20 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 		except KeyError:
 			pass
 		Variable_region = SeqRecord_gernerator(key, str(result[3]), 'Variable_region')
-		V_gene_region = SeqRecord_gernerator(key, str(result[4]), 'V_gene_region')
+		V_gene_region   = SeqRecord_gernerator(key, str(result[4]), 'V_gene_region')
 		SeqIO.write(Variable_region, outfile, "fasta")
 		SeqIO.write(V_gene_region, outfile2, "fasta")
+		if result[5] != '':
+			Leader_region = SeqRecord_gernerator(key, str(result[5]), 'Leader_region')
+			SeqIO.write(Leader_region, leader_region_outfile, "fasta")
+		if result[6] != '':
+			C_region = SeqRecord_gernerator(key, str(result[6]), 'C_region')
+			SeqIO.write(C_region, C_region_outfile, "fasta")
 	CDR3_outfile.close()
 	outfile.close()
 	outfile2.close()
+	C_region_outfile.close()
+	leader_region_outfile.close()
 	
 		
 	
