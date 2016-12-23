@@ -187,9 +187,11 @@ def do_clustalw(file_for_clustalw):
 		clustalw_cline = ClustalwCommandline(clustalw_exe, infile=in_file)
 		stdout, stderr = clustalw_cline()
 
-def get_mutation_patterns_v2(assignment_dict, all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta, germline_type):
+def chunks(arr, n):
+	return [arr[i:i + n] for i in range(0, len(arr), n)]
+
+def get_mutation_patterns_dict(assignment_dict, all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta, germline_type,file_index):
 	mutation_patterns_dict = {}
-	print type(all_reads_ids_list), len(all_reads_ids_list)
 	for read_index, read_id in enumerate(all_reads_ids_list):
 		if read_index % 10000 == 0:
 			print "%s has been processed..."%read_index
@@ -228,8 +230,33 @@ def get_mutation_patterns_v2(assignment_dict, all_reads_ids_list, max_freq_allel
 			os.system("rm %s_%s_pair.fasta"%(test_seq_id,ref_seq_id))
 			os.system("rm %s_%s_pair.aln"%(test_seq_id,ref_seq_id))
 			os.system("rm %s_%s_pair.dnd"%(test_seq_id,ref_seq_id))
-			
+	pickle_file = '%s/%s_get_mutation_patterns_dict_dump_%s_%s_%s_%s'%(prj_tree.tmp, prj_name, germline_type, chain_type, max_freq_allele.split('*')[0],file_index)
+	pickle_file_handle = open(pickle_file, 'wb')
+	dump_tuple = mutation_patterns_dict
+	pickle.dump(dump_tuple, pickle_file_handle)
+	pickle_file_handle.close()
+def get_mutation_patterns_v2(assignment_dict, all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta, germline_type):
 	
+	print type(all_reads_ids_list), len(all_reads_ids_list)
+	all_reads_ids_list_chunks = chunks(all_reads_ids_list, 500)
+	task_pool = Pool(processes = pool_size)
+	
+	for (index, all_reads_ids_list) in enumerate(all_reads_ids_list_chunks):
+		print "Processing %s part"%index
+		#get_mutation_patterns_dict(assignment_dict, all_reads_ids_list, max_freq_allele, germline_fasta, unique_real_reads_fasta, germline_type,index)
+		pjobs_ids = task_pool.apply_async(get_mutation_patterns_dict, args=(assignment_dict, all_reads_ids_list, max_freq_allele,  germline_fasta, unique_real_reads_fasta, germline_type,index,))
+	print "Waiting for all subprocesses done..."
+	task_pool.close()
+	task_pool.join()
+	#check_jobs_done(prj_name, prj_tree, "get_assignment_info", pjobs_ids)
+	print 'All subprocesses done.'
+	#'''
+	mutation_patterns_dict = {}		
+	pickle_files = glob.glob('%s/%s_get_mutation_patterns_dict_dump_%s_%s_%s_*'%(prj_tree.tmp, prj_name, germline_type, chain_type, max_freq_allele.split('*')[0]))
+	for pickle_file in pickle_files:
+		mutation_patterns_dict_part = process_dump(pickle_file)
+		mutation_patterns_dict = combine_dict_and_list(mutation_patterns_dict, mutation_patterns_dict_part)
+		
 	mutation_patterns_group = {}
 	for (key, value) in mutation_patterns_dict.items():
 		mutation_patterns_group.setdefault(value[0], []).append((key, value[1]))
@@ -260,6 +287,25 @@ def get_mutation_patterns_v2(assignment_dict, all_reads_ids_list, max_freq_allel
 	mutation_patterns_writer.writerows(data)
 	mutation_patterns_file.close()
 	return data	
+
+def process_dump(infile):
+	f = open(infile, 'rb')
+	pickle_tuple = pickle.load(f)
+	mutation_patterns_dict = pickle_tuple
+	f.close()
+	return	mutation_patterns_dict
+
+def get_germ_ids(x, y):
+	return set(x)|set(y)
+def combine_dict_and_list(NoMut_alignment_dict, NoMut_alignment_dict_part):
+	
+	NoMut_alignment_dict_combined = combine_dict_part(NoMut_alignment_dict, NoMut_alignment_dict_part)
+	return NoMut_alignment_dict_combined
+
+def combine_dict_part(dict1, dict2):
+	dictMerged2=dict(dict1, **dict2)
+	
+	return dictMerged2
 def load_assignment_dict(IGBLAST_assignment_file):
 	assignment_dict = {}
 	infile = open(IGBLAST_assignment_file,"rU")
@@ -272,10 +318,16 @@ def load_assignment_dict(IGBLAST_assignment_file):
 def main():
 	#germline_fasta = load_fasta_dict("/zzh_gpfs02/yanmingchen/HJT-PGM/Naive/Naive_IgM/Igblast_database/20150429-human-gl-vdj.fasta")
 	#unique_real_reads_fasta = load_fasta_dict("%s/%s_H_real_reads_V_region_unique.fasta"%(prj_tree.reads, prj_name))
-	germline_fasta = SeqIO.index("/zzh_gpfs02/yanmingchen/HJT-PGM/Naive/Naive_IgM/Igblast_database/20150429-human-gl-vdj.fasta", "fasta")
-	unique_real_reads_fasta = SeqIO.index("%s/%s_%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta")
+	germline_fasta = SeqIO.to_dict(SeqIO.parse("/zzh_gpfs02/yanmingchen/HJT-PGM/Naive/Naive_IgM/Igblast_database/20150429-human-gl-vdj.fasta", "fasta"))
+	unique_real_reads_fasta = SeqIO.to_dict(SeqIO.parse("%s/%s_%s_real_reads_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type), "fasta"))
+	
 	IGBLAST_assignment_file = "%s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_name)
 	assignment_dict = load_assignment_dict(IGBLAST_assignment_file)
+	
+	manager = Manager()
+	assignment_dict = manager.dict(assignment_dict)
+	germline_fasta = manager.dict(germline_fasta)
+	unique_real_reads_fasta = manager.dict(unique_real_reads_fasta)
 	
 	for germline_type in ('V','J'):
 		germline_gene_list = get_germline_gene(germline_type, chain_type)
@@ -302,7 +354,7 @@ if __name__ == '__main__':
 	prj_tree = ProjectFolders(prj_folder)
 	prj_name = fullpath2last_folder(prj_tree.home)
 	start = time.time()
-	pic_type = "_unique"
+	pic_type = ""#"_unique"
 	if "K" in prj_name:
 		chain_type = "K"
 		main()

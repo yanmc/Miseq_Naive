@@ -32,8 +32,9 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 	
 	outfile = open("%s/%s_%s_Variable_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	outfile2 = open("%s/%s_%s_V_gene_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
+	outfile3 = open("%s/%s_%s_J_gene_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	reader = csv.reader(open(IGBLAST_assignment_file,"rU"), delimiter = "\t")
-	result = ['Query_ID','query_seq','query_length','Variable_region', 'V_gene_region', 'Leader_region', 'C_region']
+	result = ['Query_ID','query_seq','query_length','Variable_region', 'V_gene_region', 'Leader_region', 'C_region','J_region']
 	assign_position_dict = {}
 	for line in reader:
 		assign_result = MyAlignment(line)
@@ -54,6 +55,9 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 		try:
 			Variable_region_end = int(value[4])
 			J_start = int(value[5])
+			result[7] = query_seq[J_start : Variable_region_end]
+			J_gene_region   = SeqRecord_gernerator(key, str(result[7]), 'J_gene_region')
+			SeqIO.write(J_gene_region, outfile3, "fasta")
 		except IndexError:
 			continue
 		if (trans_start-1) % 3 == 0:
@@ -92,6 +96,7 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 	CDR3_outfile.close()
 	outfile.close()
 	outfile2.close()
+	outfile3.close()
 	C_region_outfile.close()
 	leader_region_outfile.close()
 	

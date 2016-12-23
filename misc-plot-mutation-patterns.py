@@ -106,10 +106,10 @@ def main():
 				line_numbers = np.sum(mutation_patterns_reader, axis=1)
 				#print line_numbers
 			
-			
+			line_numbers = [x/(index+1) for (index, x) in enumerate(line_numbers)]
 			third_quartile = scist.scoreatpercentile(line_numbers,75)
 			interquartile_range = scist.scoreatpercentile(line_numbers,75) - scist.scoreatpercentile(line_numbers,25)
-			print mutation_patterns_reader, len(mutation_patterns_reader)
+			#print mutation_patterns_reader, len(mutation_patterns_reader)
 			print third_quartile, interquartile_range, line_numbers
 			start_bin = 0
 			for bin_index in sorted(range(1,6), reverse = True):
@@ -117,7 +117,7 @@ def main():
 				try: 
 					bin_numbers =  line_numbers[bin_index]
 					print bin_numbers, third_quartile, interquartile_range, ( bin_numbers - third_quartile) - (1.5 * interquartile_range)
-					if ( bin_numbers - third_quartile) > (0.4 * interquartile_range):
+					if ( bin_numbers - third_quartile) > (0.3 * interquartile_range):#0.4
 						print "yes"
 						print bin_numbers, third_quartile, interquartile_range, ( bin_numbers - third_quartile) - (1.5 * interquartile_range)
 						mutation_patterns_reader = copy.deepcopy(mutation_patterns_reader[bin_index:])
@@ -130,7 +130,7 @@ def main():
 			for line_index, line in enumerate(mutation_patterns_reader):
 				for row_index, row in enumerate(line):
 					if line_numbers[line_index] != 0:
-						print line_index, line_index + start_bin, line_numbers[line_index + start_bin], line_numbers
+						#print line_index, line_index + start_bin, line_numbers[line_index + start_bin], line_numbers
 						mutation_patterns_reader[line_index, row_index] = mutation_patterns_reader[line_index, row_index] / line_numbers[line_index + start_bin] * 100
 			#print mutation_patterns_reader, mutation_patterns_reader.shape
 			
@@ -170,8 +170,8 @@ def main():
 							plt.scatter(Xi, Yi, c = 'g', marker = "o", alpha=0.9, linewidth=2)
 
 							plt.plot(X_prime[:,1], y_hat, 'r')
-							ax.text(right, top - (0.05 * line_flag), "Nt postition: " + str(index+1), horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
-							ax.text(right, top - (0.05 * line_flag)-0.05, "P-value: " + str(round(est.pvalues[0], 3)), horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
+							ax.text(.2, top - (0.05 * line_flag), "Nt postition: " + str(index+1), horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
+							ax.text(.2, top - (0.05 * line_flag)-0.05, "P-value: " + str(round(est.pvalues[0], 3)), horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
 							line_flag += 2
 						
 					else:
@@ -331,7 +331,7 @@ if __name__ == '__main__':
 	prj_tree = ProjectFolders(prj_folder)
 	prj_name = fullpath2last_folder(prj_tree.home)
 	start = time.time()
-	pic_type = "_unique"
+	pic_type = ""#"_unique"
 	if "K" in prj_name:
 		chain_type = "K"
 		main()
