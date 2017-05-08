@@ -41,7 +41,7 @@ def bsub_jobs(job):
 
 def check_jobs_done(prj_name, prj_tree, app, igblast_job_ids):
 	log_file = "%s/%s_pbs.log"%(prj_tree.logs, app)
-	log_file_handle = open(log_file, "w")
+	log_file_handle = open(log_file, "a+")
 	for index, igblast_job_id in enumerate(igblast_job_ids):
 		while os.path.exists("%s/output_%s"%(prj_tree.jobs, igblast_job_id)) == False:
 			log_file_handle.write("Waiting for job_%s...%s\n"%(igblast_job_id,time.ctime()))
@@ -134,7 +134,7 @@ def prepare_IgBLAST_jobs(prj_name, prj_tree):
 		-organism human -domain_system imgt -query %s -auxiliary_data optional_file/human_gl.aux \
 		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
 		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \
-		sstrand qcovs qcovhsp' -num_alignments_V 10 -num_alignments_D 10 -num_alignments_J 10 -out \
+		sstrand qcovs qcovhsp' -num_alignments_V 20 -num_alignments_D 20 -num_alignments_J 20 -out \
 		%s/IgBLAST_result_%s.txt &"%(infile, prj_tree.igblast_data, f_ind))
 		handle.close()
 

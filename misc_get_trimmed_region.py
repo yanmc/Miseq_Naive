@@ -16,6 +16,24 @@ import glob, csv, Bio, re,os,sys
 from Bio import SeqIO
 from mytools import *
 from Bio import SeqIO
+def tanslate_file(infile):
+	outfile = open("%s_AA.fasta"%infile.split(".")[0], "w")
+	handlefile = SeqIO.parse(infile,"fasta")
+	for (index,record) in enumerate(handlefile):
+		#print record
+		aa = record.seq.translate()
+		count, trim_seq = 0, record.seq
+		while "*" in aa and count < 3:
+			#print aa
+			trim_seq = trim_seq[1:]
+			aa = trim_seq.translate()
+			count += 1
+		if "*" in aa or aa == "":
+			pass
+		else:
+			#print aa
+			seqrecord = SeqRecord(aa, id = record.id, description = "Trim:%s"%count)
+			SeqIO.write(seqrecord, outfile, "fasta")
 def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CDR3_file, origin_record_dict, chain_type):
 	leader_region_outfile = open("%s/%s_%s_leader_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
 	C_region_outfile = open("%s/%s_%s_C_region.fasta"%(prj_tree.reads, prj_name, chain_type),"w")
@@ -71,14 +89,14 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 			result[5] = query_seq[ : (start - 1 + 2 - ((trans_start-1)%3 -1))]
 			result[6] = query_seq[Variable_region_end :]
 		try:
-			CDR3_region_part = query_seq[int(CDR3_start_dict[key]) : ]
+			CDR3_region_part = query_seq[int(CDR3_start_dict[key]) - 1 : ]
 			#CDR3_region_part_protein = CDR3_region_part.translate()
 			has_fwgxg = re.search('((TGG)|(TTT)|(TTC))GG[AGCT][AGCT][AGCT][AGCT]GG[AGCT]',str(CDR3_region_part))
 			try:
 				CDR3_region = CDR3_region_part[ : has_fwgxg.end()]
 				CDR3_region_out = SeqRecord_gernerator(key, str(CDR3_region), 'CDR3_region')
 			except:
-				CDR3_region = query_seq[int(CDR3_start_dict[key]) : J_start]
+				CDR3_region = query_seq[int(CDR3_start_dict[key]) - 1 : J_start]
 				CDR3_region_out = SeqRecord_gernerator(key, str(CDR3_region), 'CDR3_region_no_wgxg')
 			SeqIO.write(CDR3_region_out, CDR3_outfile, "fasta")
 		except KeyError:
@@ -100,8 +118,8 @@ def trim_Variable_region(prj_tree, prj_name, IGBLAST_assignment_file, IGBLAST_CD
 	C_region_outfile.close()
 	leader_region_outfile.close()
 	
-		
 	
+
 	
 	
 	

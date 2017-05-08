@@ -64,7 +64,7 @@ def trim_fastq_by_quality_v2(the_file, prj_folder, bad_list):
 		quality_list = record.letter_annotations[quality_type]
 		position_list = []
 		for index in range(0,len(quality_list)):
-			if quality_list[index] > 20:
+			if quality_list[index] >= 20:
 				position_list.append(index)
 		try:
 			new_record = record[position_list[0] : position_list[-1]+1]
@@ -90,7 +90,7 @@ def trim_fastq_by_quality(the_file, prj_folder, bad_list):
 		quality_list = record.letter_annotations[quality_type]
 		position_list = []
 		for index in range(0,len(quality_list)):
-			if quality_list[index] > 20:
+			if quality_list[index] >= 20:
 				position_list.append(index)
 		new_record = record[position_list[0] : position_list[-1]+1]
 		SeqIO.write(new_record, writer, "fastq")
@@ -233,6 +233,7 @@ def main():
 			os.system("rm  ./origin/Nsw_IgD.assembled_trimed.fasta")
 			outfile.close()
 	else:
+		#"""
 		#'''
 		print "Gunzip..."
 		try:
@@ -265,7 +266,6 @@ def main():
 			merge = subprocess.call("pear -j 4 -q 20 -f %s -r %s -o %s "%(infiles[0],infiles[1], prj_name),shell=True)
 			os.chdir("%s"%(prj_tree.home))
 		#'''
-
 		#'''
 		if os.path.exists("%s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name)):
 			pass
@@ -322,18 +322,19 @@ def main():
 			SeqIO.write(new_record, outfile, "fasta")
 		outfile.close()
 		#'''
-	
+		#"""
+	#"""
 	#Step 2: Split to little files
 	print "Step 2: Split to little files"
 	record_iter = SeqIO.parse(open("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)), "fasta")
-	for i, batch in enumerate(batch_iterator(record_iter, 10000)) :
+	for i, batch in enumerate(batch_iterator(record_iter, 5000)) :
 		filename = "%s/%s_%i.fasta" % (prj_tree.split,prj_name, i+1)
 		handle = open(filename, "w")
 		count = SeqIO.write(batch, handle, "fasta")
 		handle.close()
 		print "Wrote %i records to %s" % (count, filename)
 	#files_num = i+1
-
+	#"""
 	#'''
 	#Step 5: Mapping, Multiple processing
 	print "Begin IgBLAST..."
@@ -341,17 +342,24 @@ def main():
 	gunzip = subprocess.call(cmd,shell=True)
 	prepare_IgBLAST_jobs(prj_name, prj_tree)
 	IgBLAST_jobs = glob.glob("%s/IgBLAST_*.sh" %(prj_tree.jobs))
-	IgBLAST_pool = Pool()
-	
-	#'''#Cluster PBS
-	IgBLAST_jobs_ids = IgBLAST_pool.map_async(bsub_jobs, IgBLAST_jobs).get(120)
-	print "IgBLAST_jobs: %s IgBLAST_job has been submited."%len(IgBLAST_jobs_ids)
-	check_jobs_done(prj_name, prj_tree, "IgBLAST", IgBLAST_jobs_ids)
-	print "Waiting for all subprocesses done..."
-	IgBLAST_pool.close()
-	IgBLAST_pool.join()
-	print 'All subprocesses done.'
-	#'''
+	os.system("rm %s/IgBLAST_pbs.log"%prj_tree.logs)
+	IgBLAST_jobs_patch_list = chunks(sorted(IgBLAST_jobs), 40000)
+	for patch_index, IgBLAST_jobs_patch in enumerate(IgBLAST_jobs_patch_list):
+		print "Submit %s * %s jobs.."%((int(patch_index) + 1), len(IgBLAST_jobs_patch))
+		#IgBLAST_pool = Pool()
+		IgBLAST_jobs_ids = []
+		for IgBLAST_job in IgBLAST_jobs_patch:
+			IgBLAST_jobs_id = bsub_jobs(IgBLAST_job)
+			IgBLAST_jobs_ids.append(IgBLAST_jobs_id)
+		#'''#Cluster PBS
+		#IgBLAST_jobs_ids = IgBLAST_pool.map_async(bsub_jobs, IgBLAST_jobs_patch).get(120)
+		print "IgBLAST_jobs: %s IgBLAST_job has been submited."%len(IgBLAST_jobs_ids)
+		check_jobs_done(prj_name, prj_tree, "IgBLAST", IgBLAST_jobs_ids)
+		print "Waiting for all subprocesses done..."
+		#IgBLAST_pool.close()
+		#IgBLAST_pool.join()
+		print 'All subprocesses done.'
+		#'''
 	
 	'''#One machine
 	IgBLAST_jobs_ids = IgBLAST_pool.map_async(processing_jobs, IgBLAST_jobs).get(120)
@@ -364,7 +372,7 @@ def main():
 	#'''
 
 
-
+	#"""
 	os.system("rm %s/IgBLAST_result_*_get_assignment_info.txt"%prj_tree.igblast_data)
 	os.system("rm %s/IgBLAST_result_*_get_recombanation_info.txt"%prj_tree.igblast_data)
 	os.system("rm %s/IgBLAST_result_*_get_CDR3_info.txt"%prj_tree.igblast_data)
@@ -380,12 +388,15 @@ def main():
 	os.system("cat %s/IgBLAST_result_*_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	os.system("cat %s/IgBLAST_result_*_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	os.system("cat %s/IgBLAST_result_*_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
-
+	#"""
 
 if __name__ == '__main__':
 	print 'Parent process %s'%os.getpid()
 	prj_folder = os.getcwd()
+	os.system("mkdir ./origin")
+	os.system("mv ./*.fastq ./origin/")
 	prj_tree = create_folders(prj_folder)
+	
 	prj_tree = ProjectFolders(prj_folder)
 	
 	prj_name = fullpath2last_folder(prj_tree.home)

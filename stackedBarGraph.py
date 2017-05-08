@@ -236,6 +236,7 @@ class StackedBarGrapher:
                )
         
         for i in np.arange(1,levels):
+            #print i, cols
             ax.bar(x,
                    data_copy[i],
                    bottom=data_stack[i-1],

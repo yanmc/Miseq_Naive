@@ -73,12 +73,16 @@ class Recomb:
 			self.j = row[2].strip().split(',')[0]
 			self.strand = row[-1].strip()
 			self.productive = row[-2].strip()
+			self.frame = row[-3].strip()
+			self.codon = row[-4].strip()
 		if len(row) == 9:
 			self.v = row[1].strip().split(',')[0]
 			self.d = row[2].strip().split(',')[0]
 			self.j = row[3].strip().split(',')[0]
 			self.strand = row[-1].strip()
 			self.productive = row[-2].strip()
+			self.frame = row[-3].strip()
+			self.codon = row[-4].strip()
 
 		self.cdr_start = -1
 		self.cdr_end = -1
@@ -206,6 +210,9 @@ def donothing():
 #
 # -- BEGIN -- General methods
 #
+
+def chunks(arr, n):
+    return [arr[i:i+n] for i in range(0, len(arr), n)]
 def list_counter(list):
 	return Counter(list)
 def get_median(data):
@@ -610,6 +617,37 @@ def load_primer(f):
 		result[row[0]] = row[1]
 	return result	
 		
+
+#
+# -- END -- folder and file methods 
+#
+
+
+
+#
+# -- BEGIN -- germline gene method 
+#
+
+def get_germline_gene(germline_type, chain_type):
+	if germline_type == 'V' and chain_type == "H":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGHV']
+	elif germline_type == 'J' and chain_type == "H":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGHJ']
+	
+	elif germline_type == 'V' and chain_type == "K":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGKV']
+	elif germline_type == 'J' and chain_type == "K":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGKJ']
+	
+	elif germline_type == 'V' and chain_type == "L":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGLV']
+	elif germline_type == 'J' and chain_type == "L":
+		germline_gene_list = HUMAN_GERMLINE['HUMANIGLJ']
+	return germline_gene_list
+
+def get_all_gene_name(germline_gene_list):
+	return sorted(set([x.split('*')[0] for x in germline_gene_list if "OR" not in x]))
+	
 
 #
 # -- END -- folder and file methods 
