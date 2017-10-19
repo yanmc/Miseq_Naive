@@ -430,6 +430,9 @@ def get_all_gene_name(germline_gene_list):
 	return sorted(set([x.split('*')[0] for x in germline_gene_list]))
 def main():
 	print "Begin!"
+	os.system("cat %s/IgBLAST_result_*_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+	os.system("cat %s/IgBLAST_result_*_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+	os.system("cat %s/IgBLAST_result_*_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	
 	#Step0 : get all reads Variable region, V gene region and CDR3 region
 	origin_record_dict = SeqIO.index("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name),  "fasta")
@@ -448,9 +451,9 @@ def main():
 		germline_gene_list = get_germline_gene(germline_type, chain_type)
 		#'''
 		if germline_type == "V":
-			coverage_cutoff = 5
+			coverage_cutoff = 60
 		if germline_type == "J":
-			coverage_cutoff = 0
+			coverage_cutoff = 60
 		#os.system("rm %s/%s_get_assignment_info_dump*"%(prj_tree.tmp, prj_name))
 		IGBLAST_recombanation_file = "%s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_name)
 		real_reads_list, assign_result_reads_num, total_reads_num = process_recomb(IGBLAST_recombanation_file, germline_type, germline_gene_list)

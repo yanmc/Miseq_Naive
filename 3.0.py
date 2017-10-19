@@ -269,24 +269,30 @@ def get_mutation_patterns_v2(assignment_dict, all_reads_ids_list, max_freq_allel
 	pickle.dump(dump_tuple, pickle_file_handle)
 	pickle_file_handle.close()
 	
-	data = np.zeros((len(mutation_patterns_group)-1, len(germline_fasta[max_freq_allele])))
-	for index, (group_number, value) in enumerate(mutation_patterns_group.items()):
-		if index != 0:
-			position_mut_list = [item[1]  for item in value]
-			for position_list in position_mut_list:
-				for position_record in position_list:
-					position = position_record[0]
-					try:
-						data[index-1][position-1] += 1
-					except IndexError:
-						print index, position, group_number, value
-	mutation_patterns_file = open('%s/%s_%s_mutation_patterns.txt'%(prj_tree.data, prj_name, ref_seq_id_name), 'w')
-	mutation_patterns_writer = csv.writer(mutation_patterns_file, delimiter = "\t")
-	#for line in data:
-	#	mutation_patterns_writer.writerow(line)
-	mutation_patterns_writer.writerows(data)
-	mutation_patterns_file.close()
-	return data	
+	try:
+		data = np.zeros((len(mutation_patterns_group)-1, len(germline_fasta[max_freq_allele])))
+		for index, (group_number, value) in enumerate(mutation_patterns_group.items()):
+			if index != 0:
+				position_mut_list = [item[1]  for item in value]
+				for position_list in position_mut_list:
+					for position_record in position_list:
+						position = position_record[0]
+						try:
+							data[index-1][position-1] += 1
+						except IndexError:
+							print index, position, group_number, value
+		mutation_patterns_file = open('%s/%s_%s_mutation_patterns.txt'%(prj_tree.data, prj_name, ref_seq_id_name), 'w')
+		mutation_patterns_writer = csv.writer(mutation_patterns_file, delimiter = "\t")
+		#for line in data:
+		#	mutation_patterns_writer.writerow(line)
+		mutation_patterns_writer.writerows(data)
+		mutation_patterns_file.close()
+		return data
+	except ValueError:
+		print mutation_patterns_group
+		print germline_fasta[max_freq_allele]
+		print len(mutation_patterns_group)-1, len(germline_fasta[max_freq_allele])
+	
 
 def process_dump(infile):
 	f = open(infile, 'rb')

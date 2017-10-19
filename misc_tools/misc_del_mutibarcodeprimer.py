@@ -34,9 +34,9 @@ import statsmodels.api as sm
 
 				
 def main():
-	os.system("mkdir /zzh_gpfs02/yanmingchen/2_sample_test/%s"%prj_name)
-	os.system("mkdir /zzh_gpfs02/yanmingchen/2_sample_test/%s/origin"%prj_name)
-	barcode_file = open("../barcode_all.txt", "rU")
+	os.system("mkdir /zzh_gpfs02/yanmingchen/3_sample_2/%s_demultibarcode"%prj_name)
+	os.system("mkdir /zzh_gpfs02/yanmingchen/3_sample_2/%s_demultibarcode/origin"%prj_name)
+	barcode_file = open("../barcode.txt", "rU")
 	barcode_dict = {}
 	for line in barcode_file:
 		print line
@@ -45,11 +45,13 @@ def main():
 		if len(line) == 2:
 			barcode_dict[line[0]] = line[1]
 	print barcode_dict
-	infile = "%s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name)
+	os.system("mkdir origin")
+	os.system("mv *.fasta ./origin/")
+	infile = "%s/%s.assembled.fasta"%(prj_tree.origin, prj_name)
 	print infile
-	handle = SeqIO.parse(open(infile, "rU"), "fastq")
+	handle = SeqIO.parse(open(infile, "rU"), "fasta")
 	#n = 1
-	writer = open("/zzh_gpfs02/yanmingchen/2_sample_test/%s/origin/%s.assembled.fastq"%(prj_name, prj_name), "w")
+	writer = open("/zzh_gpfs02/yanmingchen/3_sample_2/%s_demultibarcode/origin/%s_demultibarcode.assembled.fasta"%(prj_name, prj_name), "w")
 	for entry in handle:
 		seq = str(entry.seq)
 		flag = 0
@@ -62,10 +64,11 @@ def main():
 			#print key, value
 			if entry.id == "M03098:58:000000000-B3NR2:1:1107:15715:17908" :
 				print key, prj_name
-			if 	key.split("_")[-1] == "1":
-				barcode_name = key.split("_")[-2]
-			else:
-				barcode_name = key.split("_")[-1]
+			#if 	key.split("_")[-1] == "1":
+			#	barcode_name = key.split("_")[-2]
+			#else:
+			#	barcode_name = key.split("_")[-1]
+			barcode_name = key
 			if barcode_name not in prj_name:
 				if entry.id == "M03098:58:000000000-B3NR2:1:1107:15715:17908" :
 					print "yes"
@@ -98,7 +101,7 @@ def main():
 							print flag
 
 		if flag == 0:
-			SeqIO.write(entry, writer, "fastq")
+			SeqIO.write(entry, writer, "fasta")
 	
 			
 	

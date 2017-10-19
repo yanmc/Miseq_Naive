@@ -24,6 +24,16 @@ try:
 except ImportError:
     import pickle
 
+import shutil
+
+def copyfile(infile,path):
+    if os.path.exists(infile):
+        os.rmdir(infile)
+        shutil.copyfile(infile, path)
+        print "copy %s to %s successful" % (file,path)
+    else:
+        shutil.copyfile(infile, path)
+        print "copy %s to %s successful" % (file,path)
 
 
 def batch_iterator(iterator, batch_size) :
@@ -182,7 +192,7 @@ def main():
 	
 
 	
-	if prj_name == "Naive_H" :
+	if prj_name == "Naive_H_" :
 		if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
 			pass
 		else:
@@ -233,7 +243,7 @@ def main():
 			os.system("rm  ./origin/Nsw_IgD.assembled_trimed.fasta")
 			outfile.close()
 	else:
-		#"""
+		"""
 		#'''
 		print "Gunzip..."
 		try:
@@ -252,8 +262,8 @@ def main():
 			pass
 		#'''
 
-
-		#'''
+		"""
+		'''
 		if os.path.exists("%s/%s.assembled.fastq"%(prj_tree.origin, prj_name)):
 			pass
 		else:
@@ -265,8 +275,18 @@ def main():
 			os.chdir("%s"%(prj_tree.origin))
 			merge = subprocess.call("pear -j 4 -q 20 -f %s -r %s -o %s "%(infiles[0],infiles[1], prj_name),shell=True)
 			os.chdir("%s"%(prj_tree.home))
-		#'''
-		#'''
+			time.sleep(100)
+		'''
+		if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
+			pass
+		else:
+			
+			merge = subprocess.call("mv %s/%s.assembled.fastq  %s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name),shell=True)
+			merge = subprocess.call("cp %s/%s.assembled_trimed.fastq  %s/%s.assembled.fastq"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name),shell=True)
+			merge = subprocess.call("mv %s/%s.assembled.fasta  %s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name),shell=True)
+			merge = subprocess.call("cp %s/%s.assembled_trimed.fasta  %s/%s.assembled.fasta"%(prj_tree.origin, prj_name, prj_tree.origin, prj_name),shell=True)
+			#time.sleep(100)
+		'''
 		if os.path.exists("%s/%s.assembled_trimed.fastq"%(prj_tree.origin, prj_name)):
 			pass
 		else:
@@ -276,7 +296,7 @@ def main():
 			for the_file in infiles:
 				trim_fastq_by_quality(the_file,prj_folder,bad_list)
 		#sys.exit(0)
-		#'''
+		'''
 
 		'''
 		print "Filter..."
@@ -299,7 +319,7 @@ def main():
 				SeqIO.write(r1_infile[read_id], r1_file_writer, "fastq")
 				SeqIO.write(r2_infile[read_id], r2_file_writer, "fastq")
 		'''
-
+        
 		#'''
 		if os.path.exists("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)):
 			pass
@@ -322,8 +342,8 @@ def main():
 			SeqIO.write(new_record, outfile, "fasta")
 		outfile.close()
 		#'''
-		#"""
-	#"""
+		
+	
 	#Step 2: Split to little files
 	print "Step 2: Split to little files"
 	record_iter = SeqIO.parse(open("%s/%s.assembled_trimed.fasta"%(prj_tree.origin, prj_name)), "fasta")
@@ -334,13 +354,17 @@ def main():
 		handle.close()
 		print "Wrote %i records to %s" % (count, filename)
 	#files_num = i+1
-	#"""
+	
 	#'''
 	#Step 5: Mapping, Multiple processing
 	print "Begin IgBLAST..."
-	cmd = "cp -r /zzh_gpfs02/yanmingchen/HJT-PGM/PGM_UMI_121_20160624/Igblast_database/* %s/"%(prj_tree.igblast_database)
+	#cmd = "cp -r /zzh_gpfs02/yanmingchen/HJT-PGM/PGM_UMI_121_20160624/Igblast_database/* %s/"%(prj_tree.igblast_database)
+	cmd = "cp -r /zzh_gpfs02/yanmingchen/IMGT_database_withgap/Changeo_Example/database/* Igblast_database/"
+	gunzip = subprocess.call(cmd,shell=True)
+	cmd = "cp -r /zzh_gpfs02/yanmingchen/TCR_database/* Igblast_database/"
 	gunzip = subprocess.call(cmd,shell=True)
 	prepare_IgBLAST_jobs(prj_name, prj_tree)
+	#prepare_IgBLAST_TCR_jobs(prj_name, prj_tree)
 	IgBLAST_jobs = glob.glob("%s/IgBLAST_*.sh" %(prj_tree.jobs))
 	os.system("rm %s/IgBLAST_pbs.log"%prj_tree.logs)
 	IgBLAST_jobs_patch_list = chunks(sorted(IgBLAST_jobs), 40000)
@@ -370,8 +394,8 @@ def main():
 	print 'All subprocesses done.'
 	'''
 	#'''
-
-
+	
+	
 	#"""
 	os.system("rm %s/IgBLAST_result_*_get_assignment_info.txt"%prj_tree.igblast_data)
 	os.system("rm %s/IgBLAST_result_*_get_recombanation_info.txt"%prj_tree.igblast_data)
@@ -385,15 +409,25 @@ def main():
 	pool.close()
 	pool.join()
 	print 'All subprocesses done.'
-	os.system("cat %s/IgBLAST_result_*_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
-	os.system("cat %s/IgBLAST_result_*_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
-	os.system("cat %s/IgBLAST_result_*_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+	sample_type = "BCR"
+	if sample_type == "TCR":
+		os.system("cat %s/IgBLAST_result_*_alph_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+		os.system("cat %s/IgBLAST_result_*_alph_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+		os.system("cat %s/IgBLAST_result_*_alph_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+		os.system("cat %s/IgBLAST_result_*_beta_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+		os.system("cat %s/IgBLAST_result_*_beta_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+		os.system("cat %s/IgBLAST_result_*_beta_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+	else:
+		os.system("cat %s/IgBLAST_result_*_get_assignment_info.txt > %s/%s_get_assignment_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+		os.system("cat %s/IgBLAST_result_*_get_recombanation_info.txt > %s/%s_get_recombanation_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
+		os.system("cat %s/IgBLAST_result_*_get_CDR3_info.txt > %s/%s_get_CDR3_info.txt"%(prj_tree.igblast_data, prj_tree.igblast_data, prj_name))
 	#"""
 
 if __name__ == '__main__':
 	print 'Parent process %s'%os.getpid()
 	prj_folder = os.getcwd()
 	os.system("mkdir ./origin")
+	os.system("mv ./*.fasta ./origin/")
 	os.system("mv ./*.fastq ./origin/")
 	prj_tree = create_folders(prj_folder)
 	

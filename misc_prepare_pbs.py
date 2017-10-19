@@ -74,7 +74,7 @@ def prepare_cdhit_nucle_pbs(prj_name, prj_tree, fasta_file, round_index):
 	handle.write("#BSUB -R %s\n"%("\"span[ptile=1]\""))
 	handle.write("#BSUB -o %s/output_%%%s\n"%(prj_tree.jobs, "J"))
 	handle.write("#BSUB -e %s/errput_%%%s\n"%(prj_tree.jobs, "J"))
-	handle.write("#BSUB -q cpu\n")
+	handle.write("#BSUB -q zzh\n")
 	handle.write("cd-hit-est -i %s -o %s_%s -c 0.95 -n 10 -d 0 -M 0 -T 8 -g 1 -p 1 &"%(fasta_file, head, round_index))
 	handle.close()
 def prepare_justfy_primer_and_group_pbs(prj_name, prj_tree, pickle_file):
@@ -104,10 +104,50 @@ def prepare_clustal_jobs_normal(prj_name, prj_tree, UMI_length, group_type):
 		handle.write("#BSUB -R %s\n"%("\"span[ptile=1]\""))
 		handle.write("#BSUB -o %s/output_%%%s\n"%(prj_tree.jobs, "J"))
 		handle.write("#BSUB -e %s/errput_%%%s\n"%(prj_tree.jobs, "J"))
-		handle.write("#BSUB -q cpu\n")
+		handle.write("#BSUB -q zzh\n")
 		handle.write("/zzh_gpfs/apps/clustalw-2.1-linux-x86_64-libcppstatic/clustalw2 -infile=%s  -ITERATION=ALIGNMENT&"%(infile))
 		handle.close()
 
+
+def prepare_IgBLAST_TCR_jobs(prj_name, prj_tree):
+	"""
+	prepare files for each of the fasta files todo IgBLAST
+	"""
+	
+	# load all fasta files in split folder
+	infiles = glob.glob("%s/%s_*.fasta" %(prj_tree.split, prj_name))
+	infile_number = len(infiles)
+	
+	for infile in infiles:
+		head, tail 	= os.path.splitext(infile)
+		f_ind 		= head.split("_")[ -1 ]
+		handle = open("%s/IgBLAST_%s.sh" %(prj_tree.jobs,f_ind), "w")
+		handle.write("#!/bin/bash\n")
+		handle.write("#BSUB -J %s_%s\n" %(prj_name,f_ind))
+		handle.write("#BSUB -n 1\n")
+		#handle.write("#BSUB -n %s\n"%(infile_number*4))
+		handle.write("#BSUB -R %s\n"%("\"span[ptile=1]\""))
+		handle.write("#BSUB -o %s/output_%%%s\n"%(prj_tree.jobs, "J"))
+		handle.write("#BSUB -e %s/errput_%%%s\n"%(prj_tree.jobs, "J"))
+		handle.write("#BSUB -q zzh\n")
+		
+		handle.write("igblastn -germline_db_V ./Igblast_database/human_TCR_V_beta.fa -germline_db_J \
+		./Igblast_database/human_TCR_J_beta.fa -germline_db_D ./Igblast_database/human_TCR_D_beta.fa \
+		-organism human -domain_system imgt -query %s -ig_seqtype TCR -auxiliary_data  optional_file/human_gl.aux \
+		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
+		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \
+		sstrand qcovs qcovhsp' -out \
+		%s/IgBLAST_result_%s_beta.txt &\n"%(infile, prj_tree.igblast_data, f_ind))
+		'''
+		handle.write("igblastn -germline_db_V ./Igblast_database/human_TCR_V_alph.fa -germline_db_J \
+		./Igblast_database/human_TCR_J_alph.fa  \
+		-organism human -domain_system imgt -query %s -ig_seqtype TCR -auxiliary_data  optional_file/human_gl.aux \
+		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
+		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \
+		sstrand qcovs qcovhsp' -out \
+		%s/IgBLAST_result_%s_alph.txt &"%(infile, prj_tree.igblast_data, f_ind))
+		'''
+		handle.close()
 def prepare_IgBLAST_jobs(prj_name, prj_tree):
 	"""
 	prepare files for each of the fasta files todo IgBLAST
@@ -128,16 +168,53 @@ def prepare_IgBLAST_jobs(prj_name, prj_tree):
 		handle.write("#BSUB -R %s\n"%("\"span[ptile=1]\""))
 		handle.write("#BSUB -o %s/output_%%%s\n"%(prj_tree.jobs, "J"))
 		handle.write("#BSUB -e %s/errput_%%%s\n"%(prj_tree.jobs, "J"))
-		handle.write("#BSUB -q cpu\n")
+		handle.write("#BSUB -q zzh\n")
+		
+		handle.write("igblastn -germline_db_V ./Igblast_database/human_igh_v -germline_db_J \
+		./Igblast_database/human_igh_j -germline_db_D ./Igblast_database/human_igh_d \
+		-organism human -domain_system imgt -query %s -auxiliary_data optional_file/human_gl.aux \
+		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
+		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \
+		sstrand qcovs qcovhsp' -num_alignments_V 3 -num_alignments_D 3 -num_alignments_J 3 -out \
+		%s/IgBLAST_result_%s.txt &"%(infile, prj_tree.igblast_data, f_ind))
+		handle.close()
+		'''
 		handle.write("igblastn -germline_db_V ./Igblast_database/20150429-human-gl-v -germline_db_J \
 		./Igblast_database/20150429-human-gl-j -germline_db_D ./Igblast_database/20150429-human-gl-d \
 		-organism human -domain_system imgt -query %s -auxiliary_data optional_file/human_gl.aux \
 		-outfmt '7 qseqid sseqid pident length mismatch gapopen gaps qstart qend sstart send evalue \
 		bitscore qlen slen qseq sseq score frames qframe sframe positive ppos btop staxids stitle \
-		sstrand qcovs qcovhsp' -num_alignments_V 20 -num_alignments_D 20 -num_alignments_J 20 -out \
+		sstrand qcovs qcovhsp' -num_alignments_V 3 -num_alignments_D 3 -num_alignments_J 3 -out \
 		%s/IgBLAST_result_%s.txt &"%(infile, prj_tree.igblast_data, f_ind))
 		handle.close()
-
+		'''
+def prepare_IgBLAST_jobs_2(prj_name, prj_tree):
+	"""
+	prepare files for each of the fasta files todo IgBLAST
+	"""
+	
+	# load all fasta files in split folder
+	infiles = glob.glob("%s/%s_*.fasta" %(prj_tree.split, prj_name))
+	infile_number = len(infiles)
+	
+	for infile in infiles:
+		head, tail 	= os.path.splitext(infile)
+		f_ind 		= head.split("_")[ -1 ]
+		handle = open("%s/IgBLAST_%s.sh" %(prj_tree.jobs,f_ind), "w")
+		handle.write("#!/bin/bash\n")
+		handle.write("#BSUB -J %s_%s\n" %(prj_name,f_ind))
+		handle.write("#BSUB -n 16\n")
+		#handle.write("#BSUB -n %s\n"%(infile_number*4))
+		handle.write("#BSUB -R %s\n"%("\"span[ptile=16]\""))
+		handle.write("#BSUB -o %s/output_%%%s\n"%(prj_tree.jobs, "J"))
+		handle.write("#BSUB -e %s/errput_%%%s\n"%(prj_tree.jobs, "J"))
+		handle.write("#BSUB -q zzh\n")
+		handle.write("igblastn -germline_db_V ./Igblast_database/human_igh_v -germline_db_J \
+		./Igblast_database/human_igh_j -germline_db_D ./Igblast_database/human_igh_d \
+		-organism human -num_threads 16 -domain_system imgt -ig_seqtype Ig -query %s -auxiliary_data optional_file/human_gl.aux \
+		-outfmt '7 std qseq sseq btop'  -out \
+		%s/IgBLAST_result_%s.txt &"%(infile, prj_tree.igblast_data, f_ind))
+		handle.close()
 def main():
 	print "This is a module!"
 if __name__=='__main__':

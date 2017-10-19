@@ -117,7 +117,7 @@ def main():
 				try: 
 					bin_numbers =  line_numbers[bin_index]
 					print bin_numbers, third_quartile, interquartile_range, ( bin_numbers - third_quartile) - (1.5 * interquartile_range)
-					if ( bin_numbers - third_quartile) > (0.3 * interquartile_range):#0.4
+					if ( bin_numbers - third_quartile) > (1.5 * interquartile_range):#0.4 Naive :0.3
 						print "yes"
 						print bin_numbers, third_quartile, interquartile_range, ( bin_numbers - third_quartile) - (1.5 * interquartile_range)
 						mutation_patterns_reader = copy.deepcopy(mutation_patterns_reader[bin_index:])
@@ -223,49 +223,51 @@ def main():
 			
 			print pickle_file
 			ref_seq_id_name = pickle_file.split('_')[-1]
-			outfile = open('%s/%s_mutation_spectrum_%s_%s_%s'%(prj_tree.data, prj_name, germline_type, chain_type, ref_seq_id_name), "w")
+			outfile = open('%s/%s_mutation_spectrum_%s_%s_%s_all'%(prj_tree.data, prj_name, germline_type, chain_type, ref_seq_id_name), "w")
 			writer= csv.writer(outfile, delimiter= "\t")
 			pickle_file_handle = open(pickle_file, 'rb')
 			pickle_tuple = pickle.load(pickle_file_handle)
 			mutation_patterns_group = pickle_tuple
 			#print mutation_patterns_group
 			pickle_file_handle.close()
-			
-			max_freq_allele = max_freq_allele_dict[ref_seq_id_name]
+			try:
+				max_freq_allele = max_freq_allele_dict[ref_seq_id_name]
+			except KeyError:
+				continue
 			germline_fasta_seq = germline_fasta[max_freq_allele].seq.upper()
 			mutation_spectrum_array = np.zeros((len(germline_fasta_seq), 5))
 			for (key, value) in mutation_patterns_group.items():
-				if key <= 10:
-					for record in value:
-						read_id = record[0]
-						position_records = record[1]
-						for position_record_item in position_records:
-							position = position_record_item[0]
-							ref_nucl = position_record_item[1]
-							query_nucl = position_record_item[2]
-							if query_nucl == "A":
-								mutation_spectrum_array[position-1][0] += 1
-							elif query_nucl == "C":
-								mutation_spectrum_array[position-1][1] += 1
-							elif query_nucl == "-":
-								mutation_spectrum_array[position-1][2] += 1
-							elif query_nucl == "T":
-								mutation_spectrum_array[position-1][3] += 1
-							elif query_nucl == "G":
-								mutation_spectrum_array[position-1][4] += 1
+				#if key <= 10:
+				for record in value:
+					read_id = record[0]
+					position_records = record[1]
+					for position_record_item in position_records:
+						position = position_record_item[0]
+						ref_nucl = position_record_item[1]
+						query_nucl = position_record_item[2]
+						if query_nucl == "A":
+							mutation_spectrum_array[position-1][0] += 1
+						elif query_nucl == "C":
+							mutation_spectrum_array[position-1][1] += 1
+						elif query_nucl == "-":
+							mutation_spectrum_array[position-1][2] += 1
+						elif query_nucl == "T":
+							mutation_spectrum_array[position-1][3] += 1
+						elif query_nucl == "G":
+							mutation_spectrum_array[position-1][4] += 1
 			for index, nucl in enumerate(germline_fasta_seq):
 				if nucl == "A":
 					print "mutation_spectrum_array[index][0]", mutation_spectrum_array[index][0]
-					mutation_spectrum_array[index][0] =  0#-sum(mutation_spectrum_array[index])
+					#mutation_spectrum_array[index][0] =  0#-sum(mutation_spectrum_array[index])
 				if nucl == "C":
 					print "mutation_spectrum_array[index][1]", mutation_spectrum_array[index][1]
-					mutation_spectrum_array[index][1] =  0#-sum(mutation_spectrum_array[index])
+					#mutation_spectrum_array[index][1] =  0#-sum(mutation_spectrum_array[index])
 				if nucl == "T":
 					print "mutation_spectrum_array[index][3]", mutation_spectrum_array[index][3]
-					mutation_spectrum_array[index][3] =  0#-sum(mutation_spectrum_array[index])
+					#mutation_spectrum_array[index][3] =  0#-sum(mutation_spectrum_array[index])
 				if nucl == "G":
 					print "mutation_spectrum_array[index][4]", mutation_spectrum_array[index][4]
-					mutation_spectrum_array[index][4] =  0#-sum(mutation_spectrum_array[index])
+					#mutation_spectrum_array[index][4] =  0#-sum(mutation_spectrum_array[index])
 			for index, line in enumerate(mutation_spectrum_array):			
 				writer.writerow([germline_fasta_seq[index]] + list(line))
 			outfile.close()
@@ -279,7 +281,7 @@ def main():
 			plt.title( "%s %s"%(ref_seq_id_name, geneusage_dict[ref_seq_id_name]))
 			#plt.xticks(range(0,10,1), ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'))
 			
-			plt.savefig('%s/%s_%s_%s_%s_nutation_spectrum.png'%(prj_tree.figure, prj_name, chain_type, germline_type, ref_seq_id_name ), dpi=300)
+			plt.savefig('%s/%s_%s_%s_%s_nutation_spectrum_all.png'%(prj_tree.figure, prj_name, chain_type, germline_type, ref_seq_id_name ), dpi=300)
 			del fig
 			plt.close()
 			
@@ -319,7 +321,7 @@ def main():
 					SBG.stackedBarPlot(ax5,poly_nucl_position_array,d_colors,edgeCols=['#000000']*7,ylabel = 'Number of reads',gap=gap)
 					plt.title( "%s %s %s"%(ref_seq_id_name, poly_nucl_position, ref_nucl))
 					plt.xticks(range(0,10,1), ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'))
-					plt.savefig('%s/%s_%s_%s_%s_position%s.png'%(prj_tree.figure, prj_name, chain_type, germline_type, ref_seq_id_name, poly_nucl_position ), dpi=300)
+					plt.savefig('%s/%s_%s_%s_%s_position%s_all.png'%(prj_tree.figure, prj_name, chain_type, germline_type, ref_seq_id_name, poly_nucl_position ), dpi=300)
 					del fig
 					plt.close()
 		

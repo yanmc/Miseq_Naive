@@ -83,8 +83,8 @@ def scatter_hist2(prj_folder, sample_name_X, sample_name_Y, x,y):
 	del fig
 	plt.close()
 def main():
-	Sample_pool1_folder = "/zzh_gpfs02/yanmingchen/2_sample_test"
-	Sample_pool2_folder = "/zzh_gpfs02/yanmingchen/1_sample"
+	Sample_pool1_folder = "/zzh_gpfs02/yanmingchen/3_sample"
+	Sample_pool2_folder = "/zzh_gpfs02/yanmingchen/3_sample"
 	sample_name_list, clone_dict_list = [], []
 	#process 1_sample
 	os.chdir(Sample_pool2_folder)
@@ -100,7 +100,7 @@ def main():
 			prj_tree = ProjectFolders(Sample_pool2_folder + "/" + file_name)
 			prj_name = fullpath2last_folder(prj_tree.home)
 			try :
-				clone_distribution_file = "%s/%s_H_clone_frequency_all.txt"%(prj_tree.data, prj_name)
+				clone_distribution_file = "%s/%s_H_clone_frequency_all2.txt"%(prj_tree.data, prj_name)
 				
 				for line in csv.reader(open(clone_distribution_file, "rU"), delimiter= "\t"):
 					if "Frequency" not in line[-1]:
@@ -114,6 +114,7 @@ def main():
 			
 			os.chdir(Sample_pool2_folder)
 	#process 2_sample
+	'''
 	os.chdir(Sample_pool1_folder)
 	for file_name in os.listdir(Sample_pool1_folder):
 		clone_dict = {}
@@ -137,11 +138,17 @@ def main():
 			
 			
 			os.chdir(Sample_pool1_folder)
+	'''
+	
 	print sample_name_list, len(sample_name_list), len(clone_dict_list)
 	for (sample_name_X, clone_distribution_X) in zip(sample_name_list, clone_dict_list):
 		for (sample_name_Y, clone_distribution_Y) in zip(sample_name_list, clone_dict_list):
 			all_clone = set(clone_distribution_X.keys()) | set(clone_distribution_Y.keys())
+			share_clone = set(clone_distribution_X.keys()) & set(clone_distribution_Y.keys())
 			X_line, Y_line = [], []
+			outfile = "%s/%s_%s_clone_share.txt"%(prj_folder, sample_name_X, sample_name_Y)
+			outfile_handle = csv.writer(open(outfile, "w"), delimiter = "\t")
+			#outfile_handle.writerow()
 			for clone_name in all_clone:
 				try:
 					X_line.append(math.log(float(clone_distribution_X[clone_name])))
@@ -151,12 +158,16 @@ def main():
 					Y_line.append(math.log(float(clone_distribution_Y[clone_name])))
 				except KeyError:
 					Y_line.append(0)
+			for clone_name in share_clone:
+				outfile_handle.writerow([clone_name, sample_name_X, clone_distribution_X[clone_name], sample_name_Y, clone_distribution_Y[clone_name]])
 			#if sample_name_X == sample_name_Y:
 			#print zip(X_line, Y_line), len(zip(X_line, Y_line))
 			#sys.exit(0)
 			r = pearsonr(X_line, Y_line)
 			print "Drawing %s and %s"%(sample_name_X, sample_name_Y)
 			scatter_hist2(prj_folder, sample_name_X, sample_name_Y, X_line, Y_line)
+			
+			
 			
 			pickle_file = "%s/%s_%s_scatterinfo.txt"%(prj_folder, sample_name_X, sample_name_Y)
 			pickle_file_handle = open(pickle_file, 'wb')

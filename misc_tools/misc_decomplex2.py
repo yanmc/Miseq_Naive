@@ -33,7 +33,7 @@ except ImportError:
 import statsmodels.api as sm
 
 def main():
-	barcode_file = open("barcode.txt", "rU")
+	barcode_file = open("barcode_1.txt", "rU")
 	barcode_dict = {}
 	for line in barcode_file:
 		print line
@@ -46,7 +46,7 @@ def main():
 	#sys.exit(0)
 	
 	
-	infiles = glob.glob("*assembled.fastq")
+	infiles = glob.glob("mix1_S6_L001_R1_001.fastq")
 	for infile in infiles:
 		print infile
 		handle = SeqIO.parse(open(infile, "rU"), "fastq")
@@ -56,10 +56,14 @@ def main():
 				reads_index = 0
 				primer_seq = str(Seq(value).upper())
 				try:
-					os.system("mkdir test_sample_%s"%key)
+					os.mkdir("./Run1")
 				except:
 					pass
-				writer = open("./test_sample_%s/sample_%s.assembled.fastq"%(key, key), "wa+")
+				try:
+					os.mkdir("./Run1/sample_%s"%key)
+				except:
+					pass
+				writer = open(".Run1/sample_%s/sample_%s.R1.fastq"%(key, key), "wa+")
 				seq = str(entry.seq)
 				forword_loc = re.finditer(primer_seq, seq, re.I)
 				flag = 0

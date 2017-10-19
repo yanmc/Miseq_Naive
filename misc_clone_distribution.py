@@ -97,9 +97,9 @@ def main():
 				pass
 	
 	writer = csv.writer(open("%s/%s_H_clone_frequency_all2.txt"%(prj_tree.data, prj_name), "w"), delimiter = "\t")
-	writer.writerow(["V gene", "J gene", "Nucl Seq", "AA Seq", "Frequency (%)"])
+	writer.writerow(["V gene", "J gene", "Nucl Seq", "AA Seq", "Frequency (%)", "Number"])
 	for index, (key, value) in enumerate(sorted(clone_dict.items(), key=lambda d: len(d[1]), reverse = True)):
-		result =  [key[0], key[1], str(key[2]), str(key[2].translate()), (float(len(value))/len(real_reads_CDR3_dict)) *100 ]
+		result =  [key[0], key[1], str(key[2]), str(key[2].translate()), (float(len(value))/len(real_reads_CDR3_dict)) *100 , len(value)]
 		
 		#if index < 20:
 		writer.writerow(result)
